@@ -59,7 +59,7 @@ while (<>) {
     if (/^id:\s+(\S+)/) {
 	$id = $1;
 	$id2ns{"$id"} = 1;
-	print STDERR "id: $id\n";
+	#print STDERR "id: $id\n";
     }
     push(@all_lines,$_);
 }
@@ -135,6 +135,10 @@ sub export {
 	elsif (/^relationship:\s+(\S+)\s+(\S+):(\S+)$/) {
 	    $x = $2;
 	    $fullx = "$2:$3";
+	}
+	elsif (/^is_a:\s+(\S+):(\S+)$/) {
+	    $x = $1;
+	    $fullx = "$1:$2";
 	}
 
 	if (!$filter_dangling && $x && $x ne $idspace) {
