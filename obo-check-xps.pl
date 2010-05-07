@@ -31,6 +31,7 @@ $/ = "\n\n";
 
 my %done = ();
 my @flagged = ();
+my %referenced;
 my $n = 0;
 if (!@ARGV) {
     @ARGV=('-');
@@ -45,11 +46,15 @@ while (@ARGV) {
         open(F,$f) || die $f;
     }
     my $hdr = 0;
+    my $stanza_type;
     while(<F>) {
         my $id;
+	if (/^\[(\+)\]/) {
+	    $stanza_type = lc($1);
+	}
         if (/id:\s*(\S+)/) {
             $id = $1;
-            if ($done{$id} && /^id/) {
+            if ($done{$id} && /\nid/) {
                 flag("$id present twice",$_);
             }
             $done{$id} = 1
@@ -65,6 +70,9 @@ while (@ARGV) {
                 s/\s*\!.*//;
                 my @parts = split(' ',$_);
                 shift @parts;
+		foreach (@parts) {
+		    $referenced{$_} = 1;
+		}
                 if (@parts == 1) {
                     push(@genii, $parts[0]);
                 }
@@ -73,7 +81,8 @@ while (@ARGV) {
                 flag("single_genus: @genii", $_);
             }
             elsif (@genii > 1) {
-                flag("multiple_genus: @genii", $_);
+                flag("multiple_genus: @genii", $_)
+		    unless $stanza_type = 'typedef';
             }
             else {
                 if ($id eq $genii[0]) {
@@ -85,6 +94,15 @@ while (@ARGV) {
         }
     }
 }
+
+foreach (keys %done) {
+    if (/^_:/) {
+	if ($referenced{$_}) {
+	    flag("unreferenced anon class", $_);
+	}
+    }
+}
+
 print STDERR "n_xps: $n_xps\n";
 
 exit(scalar(@flagged));
