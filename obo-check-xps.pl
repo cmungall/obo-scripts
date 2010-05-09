@@ -49,7 +49,7 @@ while (@ARGV) {
     my $stanza_type;
     while(<F>) {
         my $id;
-	if (/^\[(\+)\]/) {
+	if (/^\[(\w+)\]/) {
 	    $stanza_type = lc($1);
 	}
         if (/id:\s*(\S+)/) {
@@ -81,8 +81,8 @@ while (@ARGV) {
                 flag("single_genus: @genii", $_);
             }
             elsif (@genii > 1) {
-                flag("multiple_genus: @genii", $_)
-		    unless $stanza_type = 'typedef';
+                flag("multiple_genus: @genii in", $_)
+		    unless $stanza_type eq 'typedef';
             }
             else {
                 if ($id eq $genii[0]) {
