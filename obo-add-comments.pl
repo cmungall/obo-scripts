@@ -35,7 +35,7 @@ my $lastf = pop @ARGV;
 my $id;
 my %nh = ();
 while (<>) {
-    chomp;
+    s/\s+$//;
     if (/^id:\s+(\S+)/) {
         $id = $1;
     }
@@ -54,8 +54,8 @@ while(<F>) {
 		my $v = "@vals";
 		if ($check) {
 		    if (/!\s+(.*)\s*/) {
-			if ("@cmts" ne $1) {
-			    print STDERR "different: \"$1\" != \"@cmts\"\n";
+			if (lc("@cmts") ne lc($1)) {
+			    print STDERR "different: \"$1\" not the same as \"@cmts\"\n";
 			}
 		    }
 		}
@@ -84,13 +84,17 @@ sub usage {
     my $sn = scriptname();
 
     <<EOM;
-$sn [-t tag]* BASE-FILE FILE-TO-MERGE1 [FILE-TO-MERGE2...]
+$sn [-c] [-r] [-t tag]* [REFERENCED FILE...] SOURCE
 
-merges in tags to base file
+for all ID references in SOURCE in a specified tag, adds the label after a "!"
+
+using the -c option runs this in CHECK mode
+
+using the -r option replaces existing comments
 
 Example:
 
-$sn  referenced_file1.obo [referenced_file2.obo ...] source_file.obo
+$sn -c -t id -t intersection_of human-phenotype-ontology.obo quality.obo fma.obo human-phenotype-ontology_xp.obo
 
 EOM
 }
