@@ -85,11 +85,7 @@ sub usage {
     <<EOM;
 $sn [-t tag]* BASE-FILE FILE-TO-MERGE1 [FILE-TO-MERGE2...]
 
-merges in tags to base file
-
-Example:
-
-$sn  -t intersection_of -t id-mapping gene_ontology.obo go_xp_cell.obo go_xp_chebi.obo 
+TODO
 
 EOM
 }
