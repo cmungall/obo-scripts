@@ -33,6 +33,7 @@ my %done = ();
 my @flagged = ();
 my %referenced;
 my $n = 0;
+my %id_by_xp_h = ();
 if (!@ARGV) {
     @ARGV=('-');
 }
@@ -65,11 +66,13 @@ while (@ARGV) {
             if (@xps == 1) {
                 flag("single_xp: @xps",$_); 
             }
+	    my @xp_links = ();
             my @genii = ();
             foreach (@xps) {
                 s/\s*\!.*//;
                 my @parts = split(' ',$_);
                 shift @parts;
+		push(@xp_links,join(' ',@parts));
 		foreach (@parts) {
 		    $referenced{$_} = 1;
 		}
@@ -77,6 +80,11 @@ while (@ARGV) {
                     push(@genii, $parts[0]);
                 }
             }
+	    my $xp_str = join('; ', sort {$a cmp $b} @xp_links);
+	    if ($id_by_xp_h{$xp_str}) {
+		flag("duplicate xp def: '$xp_str' $id == $id_by_xp_h{$xp_str}", $_);
+	    }
+	    $id_by_xp_h{$xp_str} = $id;
             if (@genii < 1) {
                 flag("single_genus: @genii", $_);
             }
@@ -97,7 +105,7 @@ while (@ARGV) {
 
 foreach (keys %done) {
     if (/^_:/) {
-	if ($referenced{$_}) {
+	if (!$referenced{$_}) {
 	    flag("unreferenced anon class", $_);
 	}
     }
