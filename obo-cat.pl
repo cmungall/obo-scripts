@@ -37,6 +37,7 @@ sub catfile {
     while (<F>) {
         print;
     }
+    print "\n\n";
     close(F);
     #print `cat $f`;
     #print "\n";
