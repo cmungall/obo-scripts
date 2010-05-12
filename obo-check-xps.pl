@@ -58,7 +58,16 @@ while (@ARGV) {
             if ($done{$id} && /\nid/) {
                 flag("$id present twice",$_);
             }
-            $done{$id} = 1
+            $done{$id} = 1;
+	    if (/id:\s*(.*)/) {
+		my $full = $1;
+		$full =~ s/\s*\n.*//;
+		$full =~ s/\s*\!.*//;
+		$full =~ s/\S+\s*//;
+		if ($full) {
+		    flag("ID: $id contains whitespace, followed by '$full'", $_);
+		}
+	    }
         }
         my @lines = split(/\n/,$_);
         my @xps = grep {/^intersection_of:/} @lines;
