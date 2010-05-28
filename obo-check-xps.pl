@@ -53,7 +53,7 @@ while (@ARGV) {
 	if (/^\[(\w+)\]/) {
 	    $stanza_type = lc($1);
 	}
-        if (/id:\s*(\S+)/) {
+        if (/\nid:\s*(\S+)/) {
             $id = $1;
             if ($done{$id} && /\nid/) {
                 flag("$id present twice",$_);
