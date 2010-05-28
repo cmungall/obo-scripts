@@ -6,7 +6,7 @@ my $regexp = '';
 my $noheader;
 my $negate;
 my $comment;
-my $rmc;
+my $rmc = 0;
 
 if (!@ARGV) {
     print usage();
@@ -45,9 +45,11 @@ while (@ARGV) {
     my $hdr = 0;
     while(<F>) {
         if ($rmc) {
-            s/^\!*//;
+            s/^\!*//g;
             s/\n\!*/\n/g;
         }
+	# remove commented out info
+	#s/\!.*\n//g;
 
         if (!$hdr && $_ !~ /^\[/) {
             $hdr = 1;
@@ -84,7 +86,7 @@ while (<F>) {
         $noheader = 1; # show max 1 times
     }
     else {
-        if (/id: (\S+)/) {
+        if (/\nid: (\S+)/) {
             my $id = $1;
             if ($th{$id}) {
                 my $diff = diff($_,$th{$id});
@@ -116,12 +118,12 @@ sub diff {
     if ($x eq $y) {
         return "[identical]";
     }
-    $x = clean($x);
-    $y = clean($y);
-    if ($x eq $y) {
+    my $xc = clean($x);
+    my $yc = clean($y);
+    if ($xc eq $yc) {
         return "[equivalent]";
     }
-    return "[DIFFERENT] <<$x>>  <<$y>>";
+    return "[DIFFERENT] <<$xc>>  <<$yc>>\nDITCHING:\n$y\nUSING:\n$x\n";
 }
 
 sub clean {
