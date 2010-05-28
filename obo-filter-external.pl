@@ -2,12 +2,10 @@
 
 use strict;
 my %tag_h=();
-my $negate = 0;
 my $typedef = 1;
 my $show_header = 1;
 my $idspace;
 my $verbose;
-my $xp2rel;
 my $filter_dangling = 1;
 while ($ARGV[0] =~ /^\-/) {
     my $opt = shift @ARGV;
@@ -16,7 +14,7 @@ while ($ARGV[0] =~ /^\-/) {
         exit 0;
     }
     elsif ($opt eq '--xp2rel') {
-        $xp2rel = 1; # now the default
+	# default
     }
     elsif ($opt eq '--typedef') {
         $typedef = 1; # now the default
@@ -32,9 +30,6 @@ while ($ARGV[0] =~ /^\-/) {
     }
     elsif ($opt eq '--verbose' || $opt eq '-v') {
         $verbose = 1;
-    }
-    elsif ($opt eq '-n' || $opt eq '--negate') {
-        $negate = 1;
     }
     elsif ($opt eq '-t' || $opt eq '--tag') {
         $tag_h{shift @ARGV} = 1;
@@ -54,6 +49,7 @@ my %id2ns = ();
 
 my @all_lines = ();
 while (<>) {
+    s/\s+$//;
     chomp;
     my $id;
     if (/^id:\s+(\S+)/) {
@@ -89,11 +85,12 @@ sub export {
 	my $orig = $_;
 	s/\s*\!.*$//;
 	s/\s+$//;
-	my $fullx;
-	my $x;
+	my $fullx; # e.g. GO:0000123
+	my $x;     # e.g. GO
 	if (/^intersection_of:\s+(\S+)\s+(\S+):(\S+)$/) {
 	    $fullx = "$2:$3";
 	    $x = $2;
+	    # if a stanza is dropped, keep rels
 	    push(@extra_rels, "relationship: $1 $2:$3");
 	}
 	elsif (/^intersection_of:\s+(\S+):(\S+)$/) {
@@ -102,16 +99,20 @@ sub export {
 	}
 
 	if ($fullx && $fullx =~ /\^/) {
-	    $fullx = '';
+	    $fullx = ''; # anon 
 	}
 
-	if (!$filter_dangling && $x && $x ne $idspace) {
+	#if (!$filter_dangling && $x && $x ne $idspace) {
+	if ($x && $x ne $idspace) {
 	    $nox = 1;
+	    if ($verbose) {
+		print STDERR "dropping all intersection_of tags, $x != $idspace\n";
+	    }
 	}
 	if ($filter_dangling && $fullx && !$id2ns{$fullx}) {
 	    $nox = 1;
 	    if ($verbose) {
-		print STDERR "dropping whole stanza, no $fullx\n";
+		print STDERR "dropping all intersection_of tags, $fullx is a dangling ref\n";
 	    }
 	}
 	$_ = $orig;
@@ -141,7 +142,8 @@ sub export {
 	    $fullx = "$1:$2";
 	}
 
-	if (!$filter_dangling && $x && $x ne $idspace) {
+	#if (!$filter_dangling && $x && $x ne $idspace) {
+	if ($x && $x ne $idspace) {
 	    $filter = 1;
 	}
 	if ($filter_dangling && $fullx && !$id2ns{$fullx}) {
