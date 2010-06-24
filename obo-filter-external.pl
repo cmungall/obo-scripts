@@ -55,7 +55,7 @@ while (<>) {
     if (/^id:\s+(\S+)/) {
 	$id = $1;
 	$id2ns{"$id"} = 1;
-	#print STDERR "id: $id\n";
+	#print STDERR "id: '$id'\n";
     }
     push(@all_lines,$_);
 }
@@ -142,12 +142,17 @@ sub export {
 	    $fullx = "$1:$2";
 	}
 
-	#if (!$filter_dangling && $x && $x ne $idspace) {
 	if ($x && $x ne $idspace) {
 	    $filter = 1;
+	    if ($verbose) {
+		print STDERR "Filtering ref to external ($x): $orig\n";
+	    }
 	}
 	if ($filter_dangling && $fullx && !$id2ns{$fullx}) {
 	    $filter = 1;
+	    if ($verbose) {
+		print STDERR "Filtering dangling ref: $orig\n";
+	    }
 	}
 	if (/^intersection_of/) {
 	    if ($nox) {
@@ -159,7 +164,7 @@ sub export {
 	    }
 	}
 	if ($verbose && $filter) {
-	    print STDERR "Filtering: $orig [full: $fullx]\n";
+	    print STDERR "Filtering: $orig [full: $fullx] idspace:$x\n";
 	}
 	print "$orig\n" unless $filter;
     }
