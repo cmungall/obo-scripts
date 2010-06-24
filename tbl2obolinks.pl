@@ -17,7 +17,12 @@ while (<>) {
     s/^\s+//;
     s/\s+$//;
     next unless $_;
-    my @cols = split;
+    my @cols = split(/\t/);
+    foreach (@cols) {
+	if (/^(\S+:\d+)\-(.*)/) {
+	    $_ = "$1 ! $2";
+	}
+    }
     if (!$rel) {
         $rel = shift @cols;
     }
