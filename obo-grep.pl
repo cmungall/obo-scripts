@@ -47,7 +47,7 @@ while (@ARGV) {
         *F=*STDIN;
     }
     else {
-        open(F,$f) || die $f;
+        open(F,$f) || die "cannot open $f";
     }
     my $hdr = 0;
     while(<F>) {
