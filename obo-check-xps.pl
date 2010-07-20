@@ -30,6 +30,7 @@ while ($ARGV[0] =~ /^\-.+/) {
 $/ = "\n\n";
 
 my %done = ();
+my %name = ();
 my @flagged = ();
 my %referenced;
 my $n = 0;
@@ -56,11 +57,12 @@ while (@ARGV) {
         if (/\nid:\s*(\S+)/) {
             $id = $1;
             if ($done{$id} && /\nid/) {
-                flag("$id present twice",$_);
+                flag("\"$name{$id}\" present twice: ",$_);
             }
             $done{$id} = 1;
 	    if (/id:\s*(.*)/) {
 		my $full = $1;
+                $name{$id} = $full;
 		$full =~ s/\s*\n.*//;
 		$full =~ s/\s*\!.*//;
 		$full =~ s/\S+\s*//;
@@ -91,7 +93,12 @@ while (@ARGV) {
             }
 	    my $xp_str = join('; ', sort {$a cmp $b} @xp_links);
 	    if ($id_by_xp_h{$xp_str}) {
-		flag("duplicate xp def: '$xp_str' $id == $id_by_xp_h{$xp_str}", $_);
+                if ($id eq $id_by_xp_h{$xp_str}) {
+                    # already reported
+                }
+                else {
+                    flag("duplicate xp def: '$xp_str' $id == $id_by_xp_h{$xp_str}", $_);
+                }
 	    }
 	    $id_by_xp_h{$xp_str} = $id;
             if (@genii < 1) {

@@ -5,6 +5,7 @@ my %tag_h=();
 my $negate = 0;
 my $replace = 0;
 my $check = 0;
+my $expand_relations = 0;
 while ($ARGV[0] =~ /^\-/) {
     my $opt = shift @ARGV;
     if ($opt eq '-h' || $opt eq '--help') {
@@ -16,6 +17,9 @@ while ($ARGV[0] =~ /^\-/) {
     }
     if ($opt eq '-r' || $opt eq '--replace') {
         $replace = 1;
+    }
+    if ($opt eq '--expand-relations') {
+        $expand_relations = 1;
     }
     if ($opt eq '-c' || $opt eq '--check') {
         $check = 1;
@@ -34,13 +38,21 @@ if (!@ARGV) {
 my $lastf = pop @ARGV;
 my $id;
 my %nh = ();
+my $stanza_type;
 while (<>) {
     s/\s+$//;
+    if (/^\[(\S+)\]/) {
+        $stanza_type = lc($1);
+    }
     if (/^id:\s+(\S+)/) {
         $id = $1;
     }
     elsif (/^name:\s+(.*)/) {
-        $nh{$id} = $1;
+        if ($stanza_type eq 'typedef' && !$expand_relations) {
+        }
+        else {
+            $nh{$id} = $1;
+        }
     }
 }
 open(F,$lastf);
