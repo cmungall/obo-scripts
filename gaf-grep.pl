@@ -62,10 +62,12 @@ while ($ARGV[0] =~ /^\-.+/) {
     }
     elsif ($opt eq '--auto-select') {
         $autofiles = 1;
+        $noheader = 1;
     }
     elsif ($opt eq '--gaf-dir') {
         $gafdir = shift @ARGV;
         $autofiles = 1;
+        $noheader = 1;
     }
     elsif ($opt eq '-e' || $opt eq '--evidence') {
         %evidenceh = map {($_=>1)} split(/[,\/]/,shift @ARGV);
@@ -80,10 +82,10 @@ while ($ARGV[0] =~ /^\-.+/) {
         require "DBI.pm";
         my @dbargs = shift @ARGV;
         if ($dbargs[0] eq 'ebi') {
-            @dbargs = ('dbi:mysql:database=go_latest;host=mysql.ebi.ac.uk;port=4085');
+            @dbargs = ('dbi:mysql:database=go_latest;host=mysql.ebi.ac.uk;port=4085','go_select', 'amigo');
         }
         $dbh = DBI->connect(@dbargs);
-        $sth_tax = $dbh->prepare("SELECT * FROM species AS c, species AS p WHERE c.ncbi_taxa_id=? AND p.ncbi_taxa_id=? AND c.left_value BETWEEN (p.left_value AND p.right_value)");
+        $sth_tax = $dbh->prepare("SELECT * FROM species AS c, species AS p WHERE c.ncbi_taxa_id=? AND p.ncbi_taxa_id=? AND (c.left_value BETWEEN p.left_value AND p.right_value)");
     }
 }
 
@@ -94,12 +96,18 @@ if ($autofiles) {
     if ($taxon) {
         foreach my $sp (keys %species2suffix) {
             if (tax_subsumed_by($sp,$taxon)) {
-                push(@files, "gene_association.".$species2suffix{$species}.".gz");
+                push(@files, "gene_association.".$species2suffix{$sp}.".gz");
             }
         }
     }
     if ($species) {
-        @files = "gene_association.".$species2suffix{$species}.".gz"
+        if ($species2suffix{$species}) {
+            @files = "gene_association.".$species2suffix{$species}.".gz";
+        }
+        else {
+            # use ALL files?
+            die "don't know what to do with $species";
+        }
     }
     if ($gafdir) {
         foreach (@files) {
@@ -128,11 +136,9 @@ while (@ARGV) {
     else {
         open(F,$f) || die "cannot open $f";
     }
-    my $hdr = 0;
     while(<F>) {
-        if (!$hdr && $_ =~ /^\!/) {
+        if (/^\!/) {
             print unless $noheader || $count;
-            $hdr = 1;
         }
         else {
             chomp;
@@ -172,6 +178,10 @@ if ($count) {
 
 exit 0;
 
+sub logmsg {
+    printf STDERR "@_\n";
+}
+
 sub tax_subsumed_by {
     my $c = shift;
     my $p = shift;
@@ -180,8 +190,10 @@ sub tax_subsumed_by {
     if (defined $taxh{$c} && defined $taxh{$c}->{$p}) {
         return $taxh{$c}->{$p};
     }
-    my $v = scalar($sth_tax->fetchrow_array($c,$p));
-    $taxh{$c}->{$p} = $v;
+    logmsg("testing $c < $p");
+    $sth_tax->execute($c,$p);
+    my $v = $sth_tax->fetchall_arrayref;
+    $taxh{$c}->{$p} = scalar(@$v);
     return $v;
 }
 
@@ -282,13 +294,49 @@ sub usage {
     my $sn = scriptname();
 
     <<EOM;
-$sn [--noheader] [--neg] [--r REGULAR-EXPRESSION] [--regexp-file FILE] OBO-FILE
+$sn [--noheader] [-d DBI_SPEC] [-q] [--source SRC] [-e EVIDENCE(s)] [-s SPECIES_TAX_ID] [-t TAX_ID]\
+ [-a ASPECT] [--r REGULAR-EXPRESSION] GAF-FILE
 
-filters out stanzas from obo files
+Filters GAFs
 
-Example:
+Examples:
 
-$sn -r 'def:.*transcript' go.obo
+# filter all IMP/IEAs to cell component, remove qualified/negated annotations, from UniProtKB
+gaf-grep.pl -a C -e IMP,IEA -q --source UniProtKB gene_association.sgd.gz
+
+# get all annotations to taxon:4932 (direct) -- automatically select the GAF(s) from the current directory
+gaf-grep.pl --gaf-dir . -s taxon:4932
+
+# get all mammalian annotations, select GAF(s) automatically. Use ebi mirror to resolve taxon queries
+gaf-grep.pl -d ebi --gaf-dir . -t taxon:40674
+
+Arguments:
+
+  --noheader           
+              omit GAF header. This is set automaticaly when the GAF is auto-selected
+  -q, --no-qualifiers
+              omit lines that have NOTs or any qualifier
+  -a, --aspect ASPECT
+              filter by aspect. One of C or F or P
+  -e, --evidence CODE(s)
+              filter by evidence code. direct. Separate multiple entries by , or /
+  -s, --species taxon:NUM
+              filter by species. direct - no taxonomic inference.
+  -t, --taxon   taxon:NUM
+              filter by taxon. can be non-species, e.g. mammals. taxon inference is used. requires db connection
+  --gaf-dir DIR
+              gene-associations directory. if this is set then files will be automatically selected based on species/taxon
+
+  -d, --dbi   DBISPEC
+              Either a full DBI spec or a shorthand name.
+              Currently the only shorthand name is 'ebi'.
+              This is currently required for taxonomic inference.
+              
+              
+
+TODO:
+
+filter bt GO ID
 
 EOM
 }
