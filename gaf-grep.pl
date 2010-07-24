@@ -18,9 +18,12 @@ my $autofiles;
 my $gafdir;
 my $dbh;
 my $sth_tax;
+my $term;
 my %taxh = ();
+my %subh = ();
 my @dbargs = ();
-while ($ARGV[0] =~ /^\-.+/) {
+my $verbose;
+while (scalar(@ARGV) && $ARGV[0] =~ /^\-.+/) {
     my $opt = shift @ARGV;
     if ($opt eq '-h' || $opt eq '--help') {
         print usage();
@@ -55,6 +58,9 @@ while ($ARGV[0] =~ /^\-.+/) {
     elsif ($opt eq '--date') {
         $date = shift @ARGV;
     }
+    elsif ($opt eq '-o' || $opt eq '--ontology-term') {
+        $term = shift @ARGV;
+    }
     elsif ($opt eq '-c' || $opt eq '--count') {
         $count = 1;
     }
@@ -76,8 +82,11 @@ while ($ARGV[0] =~ /^\-.+/) {
     elsif ($opt eq '--noheader') {
         $noheader = 1;
     }
-    elsif ($opt eq '-v' || $opt eq '--neg') {
+    elsif ($opt eq '--neg') {
         $negate = 1;
+    }
+    elsif ($opt eq '-v') {
+        $verbose = 1;
     }
     elsif ($opt eq '-d' || $opt =~ /^\-\-db/) {
         require "DBI.pm";
@@ -155,6 +164,8 @@ while (@ARGV) {
             }
             elsif ($regexp && $_ !~ /$regexp/) {
             }
+            elsif ($term && !term_subsumed_by($vals[4],$term)) {
+            }
             elsif ($date && $date =~ /(\d+)\+/ && $vals[13] < $1) {
             }
             elsif ($date && $date =~ /(\d+)\-/ && $vals[13] > $1) {
@@ -177,7 +188,9 @@ if ($count) {
 exit 0;
 
 sub logmsg {
-    printf STDERR "@_\n";
+    if ($verbose) {
+        printf STDERR "@_\n";
+    }
 }
 
 sub get_sth_tax {
@@ -203,11 +216,34 @@ sub tax_subsumed_by {
         return $taxh{$c}->{$p};
     }
     logmsg("testing $c < $p");
-    # todo - dynamic
     get_sth_tax()->execute($c,$p);
     my $v = get_sth_tax()->fetchall_arrayref;
-    $taxh{$c}->{$p} = scalar(@$v);
+    $v = scalar(@$v);
+    $taxh{$c}->{$p} = $v;
+    logmsg("     $c < $p :: $v");
     return $v;
+}
+
+sub term_subsumed_by {
+    my $c = shift;
+    my $p = shift;
+    if ($p =~ /\[(\S+)\](\S+)/) {
+# TODO
+        my ($r,$p) = ($1,$2);
+        if (defined $subh{$c} && defined $subh{$c}->{$p}) {
+            return $subh{$c}->{$p};
+        }
+        logmsg("testing $c [ $r $p");
+        get_sth_term()->execute($c,$r,$p);
+        my $v = get_sth_term()->fetchall_arrayref;
+        $v = scalar(@$v);
+        $subh{$c}->{$p} = $v;
+        logmsg("     $c < $p :: $v");
+        return $v;
+    }
+    else {
+        return $c eq $p;
+    }
 }
 
 # cut and paste from filter-gene-associations.pl - should come from metadata file
@@ -290,7 +326,7 @@ sub init_taxmap {
     'taxon:264730'=>'jcvi_Psyringae_phaseolicola',
     'taxon:211586'=>'jcvi_Soneidensis',
     'taxon:246200'=>'jcvi_Spomeroyi',
-    'taxon:5691'=>'jcvi_Tbrucei_chr2',
+        #'taxon:5691'=>'jcvi_Tbrucei_chr2',
     'taxon:686'=>'jcvi_Vcholerae',
     'taxon:6239'=>'wb',
     'taxon:7955'=>'zfin',
