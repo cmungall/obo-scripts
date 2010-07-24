@@ -30,6 +30,7 @@ while ($ARGV[0] =~ /^\-.+/) {
 $/ = "\n\n";
 
 my %done = ();
+my %stanzatype=();
 my %name = ();
 my @flagged = ();
 my %referenced;
@@ -60,6 +61,7 @@ while (@ARGV) {
                 flag("\"$name{$id}\" present twice: ",$_);
             }
             $done{$id} = 1;
+            $stanzatype{$id} = $stanza_type;
 	    if (/id:\s*(.*)/) {
 		my $full = $1;
                 $name{$id} = $full;
@@ -124,6 +126,12 @@ foreach (keys %done) {
 	if (!$referenced{$_}) {
 	    flag("unreferenced anon class", $_);
 	}
+    }
+    if ($stanzatype{$_} eq 'typedef') {
+	if (!$referenced{$_}) {
+	    flag("unreferenced relation", $_);
+	}
+        
     }
 }
 
