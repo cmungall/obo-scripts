@@ -19,6 +19,7 @@ my $gafdir;
 my $dbh;
 my $sth_tax;
 my %taxh = ();
+my @dbargs = ();
 while ($ARGV[0] =~ /^\-.+/) {
     my $opt = shift @ARGV;
     if ($opt eq '-h' || $opt eq '--help') {
@@ -70,7 +71,7 @@ while ($ARGV[0] =~ /^\-.+/) {
         $noheader = 1;
     }
     elsif ($opt eq '-e' || $opt eq '--evidence') {
-        %evidenceh = map {($_=>1)} split(/[,\/]/,shift @ARGV);
+        %evidenceh = map {s/\s+//g;($_=>1)} split(/[,\/]/,shift @ARGV);
     }
     elsif ($opt eq '--noheader') {
         $noheader = 1;
@@ -80,12 +81,9 @@ while ($ARGV[0] =~ /^\-.+/) {
     }
     elsif ($opt eq '-d' || $opt =~ /^\-\-db/) {
         require "DBI.pm";
-        my @dbargs = shift @ARGV;
-        if ($dbargs[0] eq 'ebi') {
-            @dbargs = ('dbi:mysql:database=go_latest;host=mysql.ebi.ac.uk;port=4085','go_select', 'amigo');
-        }
-        $dbh = DBI->connect(@dbargs);
-        $sth_tax = $dbh->prepare("SELECT * FROM species AS c, species AS p WHERE c.ncbi_taxa_id=? AND p.ncbi_taxa_id=? AND (c.left_value BETWEEN p.left_value AND p.right_value)");
+        @dbargs = shift @ARGV;
+        #$dbh = DBI->connect(@dbargs);
+        #$sth_tax = $dbh->prepare("SELECT * FROM species AS c, species AS p WHERE c.ncbi_taxa_id=? AND p.ncbi_taxa_id=? AND (c.left_value BETWEEN p.left_value AND p.right_value)");
     }
 }
 
@@ -182,6 +180,20 @@ sub logmsg {
     printf STDERR "@_\n";
 }
 
+sub get_sth_tax {
+    if (!$sth_tax) {
+        if (!@dbargs) {
+            @dbargs = ('ebi');
+        }
+        if ($dbargs[0] eq 'ebi') {
+            @dbargs = ('dbi:mysql:database=go_latest;host=mysql.ebi.ac.uk;port=4085','go_select', 'amigo');
+        }
+        $dbh = DBI->connect(@dbargs);
+        $sth_tax = $dbh->prepare("SELECT * FROM species AS c, species AS p WHERE c.ncbi_taxa_id=? AND p.ncbi_taxa_id=? AND (c.left_value BETWEEN p.left_value AND p.right_value)");
+    }
+    return $sth_tax;
+}
+
 sub tax_subsumed_by {
     my $c = shift;
     my $p = shift;
@@ -191,8 +203,9 @@ sub tax_subsumed_by {
         return $taxh{$c}->{$p};
     }
     logmsg("testing $c < $p");
-    $sth_tax->execute($c,$p);
-    my $v = $sth_tax->fetchall_arrayref;
+    # todo - dynamic
+    get_sth_tax()->execute($c,$p);
+    my $v = get_sth_tax()->fetchall_arrayref;
     $taxh{$c}->{$p} = scalar(@$v);
     return $v;
 }
