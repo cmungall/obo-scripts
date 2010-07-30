@@ -45,9 +45,15 @@ while (scalar(@ARGV) && $ARGV[0] =~ /^\-.+/) {
     }
     elsif ($opt eq '-t' || $opt eq '--taxon') {
         $taxon = shift @ARGV;
+        if ($taxon =~ /^\d+/) {
+            $taxon = "taxon:$taxon";
+        }
     }
     elsif ($opt eq '-s' || $opt eq '--species') {
         $species = shift @ARGV;
+        if ($species =~ /^\d+/) {
+            $species = "taxon:$species";
+        }
     }
     elsif ($opt eq '--source') {
         $source = shift @ARGV;
@@ -101,9 +107,17 @@ init_taxmap();
 if ($autofiles) {
     my @files = ();
     if ($taxon) {
-        foreach my $sp (keys %species2suffix) {
-            if (tax_subsumed_by($sp,$taxon)) {
-                push(@files, "gene_association.".$species2suffix{$sp}.".gz");
+        if ($species2suffix{$taxon}) {
+            # leaf node taxon - hardcoded file
+            @files = "gene_association.".$species2suffix{$taxon}.".gz";
+            $species = $taxon;
+            $taxon = '';
+        }
+        else {
+            foreach my $sp (keys %species2suffix) {
+                if (tax_subsumed_by($sp,$taxon)) {
+                    push(@files, "gene_association.".$species2suffix{$sp}.".gz");
+                }
             }
         }
     }
@@ -123,7 +137,7 @@ if ($autofiles) {
     }
     @ARGV = @files;
     if (!@files) {
-        die "don't know which files to use";
+        die "don't know which files to use (t: $taxon s: $species)";
     }
 }
 

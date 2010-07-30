@@ -1,12 +1,9 @@
 #!/usr/bin/perl -w
 
 use strict;
-my %tag_h=();
-my $typedef = 1;
-my $show_header = 1;
 my $idspace;
 my $verbose;
-my $filter_dangling = 1;
+my $filter_dangling = 1; # default
 while ($ARGV[0] =~ /^\-/) {
     my $opt = shift @ARGV;
     if ($opt eq '-h' || $opt eq '--help') {
@@ -16,23 +13,11 @@ while ($ARGV[0] =~ /^\-/) {
     elsif ($opt eq '--xp2rel') {
 	# default
     }
-    elsif ($opt eq '--typedef') {
-        $typedef = 1; # now the default
-    }
-    elsif ($opt eq '--no-typedef') {
-        $typedef = 0;
-    }
     elsif ($opt eq '--idspace') {
         $idspace = shift @ARGV;
     }
-    elsif ($opt eq '--no-header') {
-        $show_header = 0;
-    }
     elsif ($opt eq '--verbose' || $opt eq '-v') {
         $verbose = 1;
-    }
-    elsif ($opt eq '-t' || $opt eq '--tag') {
-        $tag_h{shift @ARGV} = 1;
     }
     elsif ($opt eq '-') {
     }
@@ -40,13 +25,12 @@ while ($ARGV[0] =~ /^\-/) {
         die "$opt";
     }
 }
-#if (!@ARGV) {
-#    print usage();
-#    exit 1;
-#}
+
+# ----------------------------------------
+# load all lines
+# ----------------------------------------
 
 my %id2ns = ();
-
 my @all_lines = ();
 while (<>) {
     s/\s+$//;
@@ -60,6 +44,10 @@ while (<>) {
     push(@all_lines,$_);
 }
 
+# ----------------------------------------
+# process all lines
+# ----------------------------------------
+
 my @lines = ();
 foreach (@all_lines) {
     chomp;
@@ -69,7 +57,10 @@ foreach (@all_lines) {
 	    $idspace = $1;
 	}
     }
+    # buffer
     push(@lines, $_);
+
+    # assumes double-newline between stanzas
     if (/^\s*$/) {
 	export();
     }
@@ -77,85 +68,92 @@ foreach (@all_lines) {
 export();
 exit 0;
 
+# ----------------------------------------
+# rewrite stanza
+# ----------------------------------------
 sub export {
-    my $nox = 0;
+    my $remove_xp_lines = 0;
     my @extra_rels = ();
 
+    # pre-process xps: all xp lines must be treated together
     foreach (@lines) {
 	my $orig = $_;
-	s/\s*\!.*$//;
+	s/\s*\!.*$//; # remove comments
 	s/\s+$//;
-	my $fullx; # e.g. GO:0000123
-	my $x;     # e.g. GO
+
+        # check for external references
+	my $global_id; # e.g. GO:0000123
+	my $id_prefix;     # e.g. GO
 	if (/^intersection_of:\s+(\S+)\s+(\S+):(\S+)$/) {
-	    $fullx = "$2:$3";
-	    $x = $2;
-	    # if a stanza is dropped, keep rels
-	    push(@extra_rels, "relationship: $1 $2:$3");
+            my $rel = $1;
+	    $global_id = "$2:$3";
+	    $id_prefix = $2;
+	    # if an xp def is dropped, keep rels
+	    push(@extra_rels, "relationship: $rel $global_id");
 	}
 	elsif (/^intersection_of:\s+(\S+):(\S+)$/) {
-	    $fullx = "$1:$2";
-	    $x = $1;
+	    $global_id = "$1:$2";
+	    $id_prefix = $1;
 	}
 
-	if ($fullx && $fullx =~ /\^/) {
-	    $fullx = ''; # anon 
+	if ($global_id && $global_id =~ /\^/) {
+	    $global_id = ''; # anon 
 	}
 
-	#if (!$filter_dangling && $x && $x ne $idspace) {
-	if ($x && $x ne $idspace) {
-	    $nox = 1;
+	if ($id_prefix && $id_prefix ne $idspace) {
+	    $remove_xp_lines = 1;
 	    if ($verbose) {
-		print STDERR "dropping all intersection_of tags, $x != $idspace\n";
+		print STDERR "dropping all intersection_of tags, $id_prefix != $idspace\n";
 	    }
 	}
-	if ($filter_dangling && $fullx && !$id2ns{$fullx}) {
-	    $nox = 1;
+	if ($filter_dangling && $global_id && !$id2ns{$global_id}) {
+	    $remove_xp_lines = 1;
 	    if ($verbose) {
-		print STDERR "dropping all intersection_of tags, $fullx is a dangling ref\n";
+		print STDERR "dropping all intersection_of tags, $global_id is a dangling ref\n";
 	    }
 	}
 	$_ = $orig;
     }
 
+    # now write all lines apart from filtered ones
     foreach (@lines) {
 	my $orig = $_;
 	s/\s*\!.*$//;
 	s/\s+$//;
 	my $filter = 0;
-	my $x;
-	my $fullx;
+	my $id_prefix;
+	my $global_id;
 	if (/^disjoint_from:\s+(\S+):(\S+)$/) {
-	    $x = $1;
-	    $fullx = "$1:$2";
+	    $id_prefix = $1;
+	    $global_id = "$1:$2";
 	}
 #	elsif (/^relationship:\s+(\S+):(\S+)$/) {
-#	    $x = $1;
-#	    $fullx = "$1:$2";
+#	    $id_prefix = $1;
+#	    $global_id = "$1:$2";
 #	}
 	elsif (/^relationship:\s+(\S+)\s+(\S+):(\S+)$/) {
-	    $x = $2;
-	    $fullx = "$2:$3";
+	    $id_prefix = $2;
+	    $global_id = "$2:$3";
 	}
 	elsif (/^is_a:\s+(\S+):(\S+)$/) {
-	    $x = $1;
-	    $fullx = "$1:$2";
+	    $id_prefix = $1;
+	    $global_id = "$1:$2";
 	}
 
-	if ($x && $x ne $idspace) {
+	if ($id_prefix && $id_prefix ne $idspace) {
 	    $filter = 1;
 	    if ($verbose) {
-		print STDERR "Filtering ref to external ($x): $orig\n";
+		print STDERR "Filtering ref to external ($id_prefix): $orig\n";
 	    }
 	}
-	if ($filter_dangling && $fullx && !$id2ns{$fullx}) {
+	if ($filter_dangling && $global_id && !$id2ns{$global_id}) {
 	    $filter = 1;
 	    if ($verbose) {
 		print STDERR "Filtering dangling ref: $orig\n";
 	    }
 	}
 	if (/^intersection_of/) {
-	    if ($nox) {
+	    if ($remove_xp_lines) {
 		$filter = 1;
 	    }
 	    else {
@@ -164,7 +162,7 @@ sub export {
 	    }
 	}
 	if ($verbose && $filter) {
-	    print STDERR "Filtering: $orig [full: $fullx] idspace:$x\n";
+	    print STDERR "Filtering: $orig [full: $global_id] idspace:$id_prefix\n";
 	}
 	print "$orig\n" unless $filter;
     }
@@ -181,7 +179,7 @@ sub usage {
     my $sn = scriptname();
 
     <<EOM;
-$sn [-t tag]* [--no-header] FILE [FILE...]
+$sn [--idspace IDSPACE] FILE
 
 strips all tags except selected
 

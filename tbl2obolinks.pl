@@ -40,6 +40,9 @@ foreach my $id (keys %linkh) {
         elsif ($rel eq 'is_a') {
             print "is_a: $_\n" foreach @{$relh->{$rel}};
         }
+        elsif ($rel eq 'equivalent_to') {
+            print "equivalent_to: $_\n" foreach @{$relh->{$rel}};
+        }
         elsif ($rel eq 'def_xref') {
             printf("def: \".\" [%s]\n",
 		   join(', ', @{$relh->{$rel}}));

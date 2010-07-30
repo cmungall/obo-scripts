@@ -74,6 +74,12 @@ while (@ARGV) {
 	    }
         }
         my @lines = split(/\n/,$_);
+        foreach (@lines) {
+            if (/^union_of:\s*(\S+)/) {
+                $referenced{$1} = 1;
+                #print STDERR "U: $1\n";
+            }
+        }
         my @xps = grep {/^intersection_of:/} @lines;
         if (@xps) {
             if (@xps == 1) {

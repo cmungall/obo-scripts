@@ -152,7 +152,7 @@ foreach my $f (@inputfiles) {
 		unless /^\s*$/;
 	    next;
 	}
-	if (/^alt_id/) {
+	if (/^(alt_id|xref):/) {
 	    # prevent self-replacements
 	    push(@out, "$_\n");
 	    next;
@@ -208,7 +208,9 @@ exit 0;
 sub check {
     my $x = shift;
     if (!$validh{$x}) {
-	print STDERR "Invalid ref: $x Line: $_\n";
+        if ($verbose) {
+            print STDERR "Invalid ref: $x Line: $_\n";
+        }
     }
 }
 
