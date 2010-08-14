@@ -79,6 +79,7 @@ sub export {
     foreach (@lines) {
 	my $orig = $_;
 	s/\s*\!.*$//; # remove comments
+	s/\s*\{.*$//; # remove qualifiers
 	s/\s+$//;
 
         # check for external references
@@ -119,6 +120,7 @@ sub export {
     foreach (@lines) {
 	my $orig = $_;
 	s/\s*\!.*$//;
+	s/\s*\{.*$//;
 	s/\s+$//;
 	my $filter = 0;
 	my $id_prefix;
