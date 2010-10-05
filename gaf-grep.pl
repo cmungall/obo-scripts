@@ -18,10 +18,15 @@ my $autofiles;
 my $gafdir;
 my $dbh;
 my $sth_tax;
+my $sth_term;
+my $term_subsumed_by_h = ();
 my $term;
 my %taxh = ();
 my %subh = ();
 my @dbargs = ();
+my %relh = ();
+my $exclude_regulates = 0;
+my $direct_annotations_only = 0;
 my $verbose;
 while (scalar(@ARGV) && $ARGV[0] =~ /^\-.+/) {
     my $opt = shift @ARGV;
@@ -77,6 +82,12 @@ while (scalar(@ARGV) && $ARGV[0] =~ /^\-.+/) {
         $autofiles = 1;
         $noheader = 1;
     }
+    elsif ($opt eq '--exclude-regulates') {
+        $exclude_regulates = 1;
+    }
+    elsif ($opt eq '--direct-annotations-only') {
+        $direct_annotations_only = 1;
+    }
     elsif ($opt eq '--gaf-dir') {
         $gafdir = shift @ARGV;
         $autofiles = 1;
@@ -100,6 +111,15 @@ while (scalar(@ARGV) && $ARGV[0] =~ /^\-.+/) {
         #$dbh = DBI->connect(@dbargs);
         #$sth_tax = $dbh->prepare("SELECT * FROM species AS c, species AS p WHERE c.ncbi_taxa_id=? AND p.ncbi_taxa_id=? AND (c.left_value BETWEEN p.left_value AND p.right_value)");
     }
+}
+
+%relh = 
+    (is_a=>1,
+     part_of=>1);
+if (!$exclude_regulates) {
+    $relh{regulates} = 1;
+    $relh{positively_regulates} = 1;
+    $relh{negatively_regulates} = 1;
 }
 
 init_taxmap();
@@ -207,18 +227,45 @@ sub logmsg {
     }
 }
 
-sub get_sth_tax {
-    if (!$sth_tax) {
+sub get_dbh {
+    if (!$dbh) {
         if (!@dbargs) {
             @dbargs = ('ebi');
         }
         if ($dbargs[0] eq 'ebi') {
             @dbargs = ('dbi:mysql:database=go_latest;host=mysql.ebi.ac.uk;port=4085','go_select', 'amigo');
         }
+        logmsg("connecting: @dbargs");
         $dbh = DBI->connect(@dbargs);
-        $sth_tax = $dbh->prepare("SELECT * FROM species AS c, species AS p WHERE c.ncbi_taxa_id=? AND p.ncbi_taxa_id=? AND (c.left_value BETWEEN p.left_value AND p.right_value)");
+    }
+    return $dbh;
+}
+
+sub get_sth_tax {
+    if (!$sth_tax) {
+        $sth_tax = get_dbh()->prepare("SELECT * FROM species AS c, species AS p WHERE c.ncbi_taxa_id=? AND p.ncbi_taxa_id=? AND (c.left_value BETWEEN p.left_value AND p.right_value)");
     }
     return $sth_tax;
+}
+
+sub get_sth_term {
+    if (!$sth_term) {
+        $sth_term = get_dbh()->prepare("SELECT r.acc FROM graph_path, term t1, term t2, term r WHERE t1.id = term1_id AND t2.id = term2_id AND r.id = relationship_type_id AND t2.acc = ? AND t1.acc = ?");
+    }
+    return $sth_term;
+}
+
+sub get_term_subsumption_table {
+    if (!$term_subsumed_by_h) {
+        logmsg("fetching term subsumption table");
+        my $rowrefs = get_dbh()->selectall_arrayref("SELECT t2.acc, t1.acc, r.acc FROM graph_path, term t1, term t2, term r WHERE t1.id = term1_id AND t2.id = term2_id AND r.id = relationship_type_id");
+        foreach my $rowref (@$rowrefs) {
+            my ($c,$p,$r) = @$rowref;
+            $term_subsumed_by_h->{$c}->{$p}->{$r} = 1;
+        }
+        logmsg("fetched term subsumption table; entries: ".scalar(@$rowrefs));
+    }
+    return $term_subsumed_by_h;
 }
 
 sub tax_subsumed_by {
@@ -241,22 +288,29 @@ sub tax_subsumed_by {
 sub term_subsumed_by {
     my $c = shift;
     my $p = shift;
-    if ($p =~ /\[(\S+)\](\S+)/) {
-# TODO
-        my ($r,$p) = ($1,$2);
+    return 1 if $c eq $p;
+    if (!$direct_annotations_only) {
         if (defined $subh{$c} && defined $subh{$c}->{$p}) {
             return $subh{$c}->{$p};
         }
-        logmsg("testing $c [ $r $p");
-        get_sth_term()->execute($c,$r,$p);
-        my $v = get_sth_term()->fetchall_arrayref;
-        $v = scalar(@$v);
-        $subh{$c}->{$p} = $v;
-        logmsg("     $c < $p :: $v");
-        return $v;
+        my $is_subsumed = 0;
+        my $tsh = get_term_subsumption_table();
+        my @rels;
+        logmsg("testing $c < $p");
+        if (defined $tsh->{$c} && defined $tsh->{$c}->{$p}) {
+            @rels = keys (%{$tsh->{$c}->{$p}});
+
+            if (grep {$relh{$_}} @rels) {
+                $is_subsumed = 1;
+            }
+
+            $subh{$c}->{$p} = $is_subsumed;
+            logmsg("     $c < $p :: $is_subsumed [ @rels ]");
+        }
+        return $is_subsumed;
     }
     else {
-        return $c eq $p;
+        return 0;
     }
 }
 
@@ -358,7 +412,7 @@ sub usage {
 
     <<EOM;
 $sn [--noheader] [-d DBI_SPEC] [-q] [--source SRC] [-e EVIDENCE(s)] [-s SPECIES_TAX_ID] [-t TAX_ID]\
- [-a ASPECT] [--r REGULAR-EXPRESSION] GAF-FILE
+ [-a ASPECT] [--r REGULAR-EXPRESSION] [-o ONTOLOGY-TERM] GAF-FILE
 
 Filters GAFs
 
