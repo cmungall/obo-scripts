@@ -134,6 +134,7 @@ if ($autofiles) {
             $taxon = '';
         }
         else {
+            push(@files, "gene_association.goa_uniprot_noiea.gz");
             foreach my $sp (keys %species2suffix) {
                 if (tax_subsumed_by($sp,$taxon)) {
                     push(@files, "gene_association.".$species2suffix{$sp}.".gz");
@@ -157,7 +158,7 @@ if ($autofiles) {
     }
     @ARGV = @files;
     if (!@files) {
-        die "don't know which files to use (t: $taxon s: $species)";
+        die "autofiles is set, and I don't know which files to use (t: $taxon s: $species)";
     }
 }
 
