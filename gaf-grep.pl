@@ -17,6 +17,8 @@ my %species2suffix;
 my $autofiles;
 my $gafdir;
 my $dbh;
+my $archive_date;
+my $archive_dir;
 my $sth_tax;
 my $sth_term;
 my $term_subsumed_by_h = ();
@@ -69,6 +71,13 @@ while (scalar(@ARGV) && $ARGV[0] =~ /^\-.+/) {
     elsif ($opt eq '--date') {
         $date = shift @ARGV;
     }
+    elsif ($opt eq '-D' || $opt eq '--archive-date') {
+        $archive_date = shift @ARGV; # e.g. 2010-01-01
+        $autofiles = 1;
+    }
+    elsif ($opt eq '-A' || $opt eq '--archive-dir') {
+        $archive_dir = shift @ARGV;
+    }
     elsif ($opt eq '-o' || $opt eq '--ontology-term') {
         $term = shift @ARGV;
     }
@@ -102,7 +111,7 @@ while (scalar(@ARGV) && $ARGV[0] =~ /^\-.+/) {
     elsif ($opt eq '--neg') {
         $negate = 1;
     }
-    elsif ($opt eq '-v') {
+    elsif ($opt eq '-v' || $opt eq '--verbose') {
         $verbose = 1;
     }
     elsif ($opt eq '-d' || $opt =~ /^\-\-db/) {
@@ -125,6 +134,7 @@ if (!$exclude_regulates) {
 init_taxmap();
 
 if ($autofiles) {
+    logmsg("automatically building file list...");
     my @files = ();
     if ($taxon) {
         if ($species2suffix{$taxon}) {
@@ -151,9 +161,27 @@ if ($autofiles) {
             die "don't know what to do with $species";
         }
     }
-    if ($gafdir) {
+    logmsg("using files: @files");
+
+    if ($archive_date) {
+        if (!$archive_dir) {
+            $archive_dir = "go_tmp";
+        }
+        if (! -d $archive_dir) {
+            `mkdir $archive_dir`;
+        }
         foreach (@files) {
-            $_ = "$gafdir/$_";
+            logmsg("fetching $_ from archive on $archive_date");
+            my $out = `cd $archive_dir && cvs -q -d:pserver:anonymous\@cvs.geneontology.org:/anoncvs checkout -D $archive_date go/gene-associations/$_ 2> ERR`;
+            logmsg($out);
+            $_ = "$archive_dir/go/gene-associations/$_";
+        }
+    }
+    else {
+        if ($gafdir) {
+            foreach (@files) {
+                $_ = "$gafdir/$_";
+            }
         }
     }
     @ARGV = @files;
@@ -165,6 +193,8 @@ if ($autofiles) {
 if (!@ARGV) {
     @ARGV = ('-');
 }
+
+logmsg("using files: @ARGV");
 
 my $n = 0;
 while (@ARGV) {
@@ -444,6 +474,10 @@ Arguments:
               filter by taxon. can be non-species, e.g. mammals. taxon inference is used. requires db connection
   --gaf-dir DIR
               gene-associations directory. if this is set then files will be automatically selected based on species/taxon
+  -D, --archive-date YYYY-MM-DD
+              extract archival GAF, from the above date. This will create a cache dir called go_tmp
+  -A, --archive-dir DIR
+              keep the archival cache in DIR rather than the above default (go_tmp)
 
   -d, --dbi   DBISPEC
               Either a full DBI spec or a shorthand name.
@@ -455,6 +489,10 @@ Arguments:
 TODO:
 
 filter bt GO ID
+
+SEE ALSO:
+
+http://www.ebi.ac.uk/QuickGO/clients/download-annotation.pl
 
 EOM
 }

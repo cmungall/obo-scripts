@@ -183,11 +183,12 @@ sub usage {
     <<EOM;
 $sn [--idspace IDSPACE] FILE
 
-strips all tags except selected
-
 Example:
 
-$sn  -t id -t xref gene_ontology.obo
+$sn  --idspace CL cell.edit.obo
+
+obo-grep.pl -r "id: CL" cell.edi.obo | $sn  --idspace CL -
+
 
 EOM
 }

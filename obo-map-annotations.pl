@@ -58,6 +58,7 @@ foreach my $mapfile (@mapfiles) {
     open(F,$mapfile) || die $mapfile;
     while (<F>) {
         chomp;
+        next if /^\!/;
         my @vals = split(/\t/,$_);
 
         # try and guess columns
@@ -186,7 +187,41 @@ sub usage {
     <<EOM;
 $sn MAPPING-FILE FILE-TO-MAP [FILE-TO-MAP ...]
 
-maps annotations using a mapping file
+maps annotations using a mapping file(s)
+
+This can be used for purposes including mapping to a subset or "slim"
+
+The mapping file is typically two column, tab separated
+
+ COL1: Source GO term
+ COL2: Target GO term
+
+No inference is performed when mapping - if you want to use the
+relationships in the ontology, then this should be incorporated into
+the mapping file.
+
+If an annotation is to a GO term without a mapping, then the
+annotation is dropped, unless --bin-go-terms is specified. If this is
+specified, then the annotation is mapped up to the relevant root node
+in F/P/C depending on the aspect.
+
+MAPPING FILES:
+
+If your mapping file does not conform to the 2-column format above,
+you can use the -k option. E.g.
+
+ -k3,4
+
+Uses col3 to read the source GO IDs, and col4 to read the targets
+
+If your mapping file has only one column, it is treated as a filter
+file. Any annotation to a term not in this is dropped.
+
+If your file has more than two columns, and the -k opt is not
+specified, then the format of the mapping file is guessed.
+
+Lines beginning with ! are ignored
+
 
 EOM
 }
