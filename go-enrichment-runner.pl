@@ -10,6 +10,8 @@ my @background_gene_sets = ();
 my @tmp_files = ();
 my $numgenes;
 my $store_results;
+my $parse;
+my $outdir = '.';
 
 our $ANNOT_TOOLS = "$ENV{HOME}/obo-galaxy/tools/annotation";
 our $CP_ONTOLOGIZER = "$ANNOT_TOOLS";
@@ -28,6 +30,9 @@ while (scalar(@ARGV) && $ARGV[0] =~ /^\-.+/) {
     }
     elsif ($opt eq '-s' || $opt eq '--store') {
         $store_results = 1;
+    }
+    elsif ($opt eq '-d' || $opt eq '--dir') {
+        $outdir = shift @ARGV;
     }
     elsif ($opt eq '-p' || $opt eq '--program') {
         push(@programs, nextargs());
@@ -52,6 +57,10 @@ while (scalar(@ARGV) && $ARGV[0] =~ /^\-.+/) {
 
 if (!@background_gene_sets) {
     @background_gene_sets = (''); #NULL
+}
+
+if (! -d $outdir) {
+    `mkdir $outdir`;
 }
 
 foreach my $program (@programs) {
@@ -125,7 +134,7 @@ sub run {
     print "# GAF: $g\n";
     print "# background: $bg\n";
     print "# command: $cmd\n";
-    print `$cmd`;
+    my $err = system($cmd);
 
     if ($exec eq 'ontologizer') {
         open(F,$out);
@@ -142,8 +151,14 @@ sub run {
         close(F);
     }
 
+    if ($parse) {
+        parse($out,$exec);
+    }
+
+
+
     if ($store_results) {
-        my $perm = mk_file_name($program,$i,$o,$g,$bg);
+        my $perm = mk_file_name([$program,$i,$o,$g,$bg],'enr');
         print `mv $out $perm`;
     }
     else {
@@ -175,9 +190,88 @@ sub split_progname {
 sub mk_tmp_file {
     my $base = shift;
     my $suffix = shift;
-    my $f = "$base$$.$suffix";
+    my $f = "$outdir/$base$$.$suffix";
     push(@tmp_files,$f);
     return $f;
+}
+
+sub mk_file_name {
+    my @parts = @{shift || []};
+    my $suffix = shift;
+    @parts = map {s/.*\///g;$_} @parts;
+    my $f = join("-",@parts);
+    return "$outdir/$f";
+}
+
+sub parse {
+    my ($f,$fmt) = @_;
+    my $func = "parse_".$fmt;
+    return $func->($f);
+}
+
+sub parse_default {
+    my $f = shift;
+    my @rows = ();
+
+    open(F,$f);
+    while (<F>) {
+        chomp;
+        push(@rows, "# $_");
+    }
+    return @rows;
+}
+
+sub parse_blip {
+    return parse_default(@_);
+}
+
+sub parse_ontologizer {
+    return parse_default(@_);
+}
+
+sub parse_termfinder {
+    my $f = shift;
+    my $aspect;
+    my $row = {};
+    my @rows = ($row);
+    my $in_hdr = 1;
+
+    open(F,$f);
+    while (<F>) {
+        chomp;
+        if (/Finding terms for (\S+)/) {
+            $aspect = $1;
+            $in_hdr = 0;
+        }
+        if ($in_hdr) {
+            push(@rows, "# $_");
+            next;
+        }
+
+        if (/^\-\- (\d+) of \d+/) {
+            $row = {};
+            push(@rows,$row);
+        }
+        elsif (/^GOID\s*(\S+)/) {
+            $row->{class_id} = $1;
+        }
+        elsif (/^TERM\s*(.*)/) {
+            $row->{class_name} = $1;
+        }
+        elsif (/^CORRECTED P\-VALUE\s*(.*)/) {
+            $row->{corrected_p_value} = $1;
+        }
+        elsif (/^UNCORRECTED P\-VALUE\s*(.*)/) {
+            $row->{uncorrected_p_value} = $1;
+        }
+        elsif (/The genes annotated to this node are/) {
+            my $nxt = <>;
+            $row->{genes} = [split(/,\s*/,$nxt)];
+        }
+        
+    }
+    close(F);
+    return @rows;
 }
 
 # -- usage --
