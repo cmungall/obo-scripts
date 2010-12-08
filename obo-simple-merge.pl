@@ -113,7 +113,7 @@ sub usage {
     my $sn = scriptname();
 
     <<EOM;
-$sn [--noheader] OBO-FILE1 OBO-FILE2 [OBO-FILE3...]
+$sn [--noheader] [--remove-comments] OBO-FILE1 OBO-FILE2 [OBO-FILE3...]
 
 Merges multiple obo files together. Each stanza is treated as atomic,
 and identified by its ID. No attempt is made to merge tags within a
