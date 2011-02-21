@@ -25,7 +25,7 @@ while (@ARGV) {
         if (/^id:\s+(\S+)/) {
             $id = $1;
         }
-        elsif (!$is_final && /^(\S+):/) {
+        elsif (!$is_final && m/^(\S+):/) {
             if (!$id) {
                 if (!$in_header) {
                     die "assertion error!";

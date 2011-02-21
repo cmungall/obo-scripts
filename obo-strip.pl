@@ -72,7 +72,7 @@ while($_ = shift @lines) {
 	    print $_
 	}
         elsif (/^(\w+):\s*(.*)/) {
-	    print $_ if $on;
+	    print $_ if $tag_h{$1} && $on;
 	}
         elsif (/^\s*\n$/) {
 	    print $_;

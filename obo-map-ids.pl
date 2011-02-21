@@ -148,8 +148,8 @@ if ($use_link_to) {
 }
 if ($use_xref_inverse) {
     foreach my $k (keys %invxrefh) {
-        printf STDERR "using xref (inv) $k --> @{$invxrefh{$k}}\n";
         if (@{$invxrefh{$k}} == 1) {
+            #printf STDERR "using xref (inv) $k --> @{$invxrefh{$k}}\n";
             if (!$alt{$k}) {
                 $alt{$k} = idfilter($invxrefh{$k});
             }
