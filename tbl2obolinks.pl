@@ -3,7 +3,7 @@
 my $rel;
 if ($ARGV[0] =~ /^\-/) {
     my $opt = shift @ARGV;
-    if ($opt eq '--rel') {
+    if ($opt eq '-r' || $opt eq '--rel') {
         $rel = shift;
     }
     if ($opt eq '--is_a') {
