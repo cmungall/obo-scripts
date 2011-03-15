@@ -34,6 +34,7 @@ my %stanzatype=();
 my %name = ();
 my @flagged = ();
 my %referenced;
+my %refrel = ();
 my $n = 0;
 my %id_by_xp_h = ();
 if (!@ARGV) {
@@ -75,10 +76,20 @@ while (@ARGV) {
         }
         my @lines = split(/\n/,$_);
         foreach (@lines) {
-            if (/^union_of:\s*(\S+)/) {
-                $referenced{$1} = 1;
+            if (/^(union_of|relationship):\s*(\S+)/) {
+                $referenced{$2} = 1;
                 #print STDERR "U: $1\n";
             }
+            elsif (/^(holds_over_chain|equivalent_to_chain):\s*(\S+)\s+(\S+)/) {
+                $referenced{$2} = 1;
+                $referenced{$3} = 1;
+                #print STDERR "U: $1\n";
+            }
+
+            if (/^relationship:\s*(\S+)/) {
+                $refrel{$1} .= "$_\n";
+            }
+
         }
         my @xps = grep {/^intersection_of:/} @lines;
         if (@xps) {
@@ -97,6 +108,9 @@ while (@ARGV) {
 		}
                 if (@parts == 1) {
                     push(@genii, $parts[0]);
+                }
+                else {
+                    $refrel{$parts[0]} .= "$_\n";
                 }
             }
 	    my $xp_str = join('; ', sort {$a cmp $b} @xp_links);
@@ -134,10 +148,17 @@ foreach (keys %done) {
 	}
     }
     if ($stanzatype{$_} eq 'typedef') {
+        $refrel{$_} = 0;
 	if (!$referenced{$_}) {
 	    flag("unreferenced relation", $_);
 	}
         
+    }
+}
+
+foreach my $k (%refrel) {
+    if ($refrel{$k}) {
+        flag("relation used but not defined","\'$k\' -- $refrel{$k}");
     }
 }
 

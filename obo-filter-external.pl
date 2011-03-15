@@ -141,6 +141,10 @@ sub export {
 	    $id_prefix = $1;
 	    $global_id = "$1:$2";
 	}
+	elsif (/^(consider|replaced_by):\s+(\S+):(\S+)$/) {
+	    $id_prefix = $2;
+	    $global_id = "$2:$3";
+	}
 
 	if ($id_prefix && $id_prefix ne $idspace) {
 	    $filter = 1;

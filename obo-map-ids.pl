@@ -43,6 +43,9 @@ while ($ARGV[0] =~ /^\-/) {
     elsif ($opt eq '-k' || $opt eq '--col') {
         $colnoh{shift @ARGV} = 1;
     }
+    else {
+        die "unknown opt: $opt";
+    }
 }
 if (!@ARGV) {
     print usage();
@@ -73,6 +76,7 @@ my %cdr = ();
 my %xrefh = ();
 my %invxrefh = ();
 my %validh = ();
+my %obsh = ();
 my %linkh = ();
 
 # build map
@@ -100,12 +104,13 @@ while (<>) {
     }
     elsif (/^is_obsolete:.*true/) {
 	delete $validh{$id};
+        $obsh{$id} = 1;
     }
 }
 
 if ($use_consider) {
     foreach my $k (keys %cdr) {
-        printf STDERR "using consider $k --> @{$cdr{$k}}\n";
+        printf STDERR "caching consider $k --> @{$cdr{$k}}\n" if $verbose;
         if (@{$cdr{$k}} == 1) {
             if (!$alt{$k}) {
                 $alt{$k} = idfilter($cdr{$k});
@@ -115,11 +120,11 @@ if ($use_consider) {
 }
 if ($use_replaced_by) {
     foreach my $k (keys %rep) {
-        printf STDERR "replaced_by $k --> @{$rep{$k}}\n";
+        printf STDERR "caching $k --> @{$rep{$k}}\n"  if $verbose;
         if (@{$rep{$k}} == 1) {
             if (!$alt{$k}) {
                 $alt{$k} = idfilter($rep{$k});
-                printf STDERR "  $k --> $alt{$k}\n";
+                #printf STDERR "  $k --> $alt{$k}\n";
             }
         }
         else {
@@ -130,7 +135,7 @@ if ($use_replaced_by) {
 }
 if ($use_xref) {
     foreach my $k (keys %xrefh) {
-        printf STDERR "using xref $k --> @{$xrefh{$k}}\n";
+        printf STDERR "using xref $k --> @{$xrefh{$k}}\n"  if $verbose;
         if (!$alt{$k}) {
             $alt{$k} = idfilter($xrefh{$k});
         }
@@ -138,7 +143,7 @@ if ($use_xref) {
 }
 if ($use_link_to) {
     foreach my $k (keys %linkh) {
-        printf STDERR "using link $k --> @{$linkh{$k}->{$use_link_to}}\n";
+        printf STDERR "using link $k --> @{$linkh{$k}->{$use_link_to}}\n"  if $verbose;
         if (@{$linkh{$k}->{$use_link_to}} == 1) {
             if (!$alt{$k}) {
                 $alt{$k} = idfilter($linkh{$k}->{$use_link_to});
@@ -149,7 +154,7 @@ if ($use_link_to) {
 if ($use_xref_inverse) {
     foreach my $k (keys %invxrefh) {
         if (@{$invxrefh{$k}} == 1) {
-            #printf STDERR "using xref (inv) $k --> @{$invxrefh{$k}}\n";
+            printf STDERR "using xref (inv) $k --> @{$invxrefh{$k}}\n"  if $verbose;
             if (!$alt{$k}) {
                 $alt{$k} = idfilter($invxrefh{$k});
             }
@@ -214,7 +219,7 @@ sub map_tab_files {
             push(@out,join("\t",@vals)."\n");
         }
         else {
-            #print STDERR "not modified";
+            print STDERR "not modified: $_\n";
         }
     }
     close(F);
@@ -222,7 +227,7 @@ sub map_tab_files {
 sub map_obo_files {
     my $f = shift;
     open(F,$f);
-    push(@out, "! input: $f\n");
+    #push(@out, "! input: $f\n");
     my $in_hdr = 1;
     while(<F>) {
         chomp;
@@ -230,11 +235,11 @@ sub map_obo_files {
             $in_hdr = 0;
         }
         if ($in_hdr) {
-            push(@hdr,"$_\n")
-                unless /^\s*$/;
+            push(@hdr,"$_\n");
+#                unless /^\s*$/;
             next;
         }
-        if (/^(alt_id|xref):/) {
+        if (/^(id|alt_id|xref):/) {
             # prevent self-replacements
             push(@out, "$_\n");
             next;
@@ -244,7 +249,7 @@ sub map_obo_files {
         @toks = map {$alt{$_} || $_} @toks;
         if ("@toks" ne $oldtoks) {
             $n++;
-            if ($verbose) {
+            unless ($silent) {
                 print STDERR "Mapped $oldtoks --> @toks\n";
             }
         }
@@ -281,8 +286,13 @@ sub map_obo_files {
 sub check {
     my $x = shift;
     if (!$validh{$x}) {
-        if ($verbose) {
-            print STDERR "Invalid ref: $x Line: $_\n";
+        if ($obsh{$x}) {
+            print STDERR "ref to obsolete ID: $x Line: $_\n";
+        }
+        else {
+            if ($verbose) {
+                print STDERR "Invalid ref: $x Line: $_\n";
+            }
         }
     }
 }
