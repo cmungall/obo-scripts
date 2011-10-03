@@ -4,12 +4,16 @@ use strict;
 my $use_consider;
 my $use_replaced_by;
 my $use_xref;
+my $xref_idspace;
 my $use_xref_inverse;
 my $use_link_to;
 my $verbose;
 my $silent = 0;
 my %colnoh;
 my $regex_filter;
+my $replace_ids;
+my $freetext;
+my $tabchar = "\t";
 while ($ARGV[0] =~ /^\-/) {
     my $opt = shift @ARGV;
     if ($opt eq '-h' || $opt eq '--help') {
@@ -31,8 +35,20 @@ while ($ARGV[0] =~ /^\-/) {
     elsif ($opt eq '-x' || $opt eq '--use-xref') {
         $use_xref = 1;
     }
+    elsif ($opt eq '--xref-idspace') {
+        $xref_idspace = shift @ARGV;
+    }
     elsif ($opt eq '-y' || $opt eq '--use-xref-inverse') {
         $use_xref_inverse = 1;
+    }
+    elsif ($opt eq '--replace-ids') {
+        $replace_ids = 1;
+    }
+    elsif ($opt eq '--freetext') {
+        $freetext = 1;
+    }
+    elsif ($opt eq '-d' || $opt eq '--delimiter') {
+        $tabchar = shift @ARGV;
     }
     elsif ($opt eq '--use-link-to') {
         $use_link_to = shift @ARGV;
@@ -99,7 +115,12 @@ while (<>) {
         push(@{$linkh{$id}->{$2}},"$2:$3");
     }
     elsif (/^xref:\s+(\S+)/) {
-        push(@{$xrefh{$id}},$1);
+        my $x=$1;
+        if ($xref_idspace && $x !~ /^$xref_idspace:/) {
+            print STDERR "Skipping $x\n";
+            next;
+        }
+        push(@{$xrefh{$id}},$x);
         push(@{$invxrefh{$1}},$id);
     }
     elsif (/^is_obsolete:.*true/) {
@@ -174,6 +195,9 @@ foreach my $f (@inputfiles) {
     if (%colnoh) {
         map_tab_files($f);
     }
+    elsif ($freetext) {
+        map_freetext_files($f);
+    }
     else {
         map_obo_files($f);
     }
@@ -206,13 +230,19 @@ sub map_tab_files {
     open(F,$f);
     while (<F>) {
         chomp;
-        my @vals = split(/\t/,$_);
+        my @vals = split(/$tabchar/,$_);
         my $modified = 0;
         foreach my $k (keys %colnoh) {
             my $v = $vals[$k-1];
             if ($alt{$v}) {
                 $vals[$k-1] = $alt{$v};
                 $modified = 1;
+            }
+            elsif ($v =~ /(\S+)\s+(.*)/) {
+                if ($alt{$1}) {
+                    $vals[$k-1] = $alt{$1}." $2";
+                    $modified = 1;
+                }
             }
         }
         if ($modified) {
@@ -224,6 +254,32 @@ sub map_tab_files {
     }
     close(F);
 }
+
+sub map_freetext_files {
+    my $f = shift;
+    open(F,$f);
+    while (<F>) {
+        chomp;
+        my $modified = 0;
+        my $in = $_;
+        foreach my $k (keys %alt) {
+            s/$k/$alt{$k}/;
+        }
+        if ($in ne $_) {
+            $modified = 1;
+        }
+        if ($modified) {
+            print STDERR "Modified: $in ==> $_\n";
+            push(@out,"$_\n");
+        }
+        else {
+            print STDERR "not modified: $_\n";
+        }
+    }
+    close(F);
+}
+
+
 sub map_obo_files {
     my $f = shift;
     open(F,$f);
@@ -239,7 +295,7 @@ sub map_obo_files {
 #                unless /^\s*$/;
             next;
         }
-        if (/^(id|alt_id|xref):/) {
+        if (/^(id|alt_id|xref):/ && !$replace_ids) {
             # prevent self-replacements
             push(@out, "$_\n");
             next;
@@ -307,7 +363,7 @@ sub usage {
     my $sn = scriptname();
 
     <<EOM;
-$sn [--use-consider] [--use-replaced_by] [--use-xref] [--use-xref-inverse] MAPPING-FILE-1 [MAPPING-FILE-n...] FILE-TO-MAP
+$sn [--use-consider] [--use-replaced_by] [--use-xref] [--use-xref-inverse] [-k COL1 -k COL2...] MAPPING-FILE-1 [MAPPING-FILE-n...] FILE-TO-MAP
 
 maps ID references, by default based on alt_id
 
@@ -315,7 +371,8 @@ If you want to map multiple files:
 
 $sn [--use-consider] [--use-replaced_by] [--use-xref] [--use-xref-inverse] MAPPING-FILE-1 [MAPPING-FILE-n...] -i FILE-TO-MAP1 [FILE-TO-MAP-2...]
 
-by default the file(s) to map are obo files.
+by default the file(s) to map are obo files. If the -k option is set, then a tab file is assumed.
+
 
 EOM
 }

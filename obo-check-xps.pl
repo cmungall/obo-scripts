@@ -100,6 +100,7 @@ while (@ARGV) {
             my @genii = ();
             foreach (@xps) {
                 s/\s*\!.*//;
+                s/\s*\{.*\}.*//;
                 my @parts = split(' ',$_);
                 shift @parts;
 		push(@xp_links,join(' ',@parts));

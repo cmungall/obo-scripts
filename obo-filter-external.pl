@@ -191,7 +191,7 @@ Example:
 
 $sn  --idspace CL cell.edit.obo
 
-obo-grep.pl -r "id: CL" cell.edi.obo | $sn  --idspace CL -
+obo-grep.pl -r "id: CL" cell.edit.obo | $sn  --idspace CL -
 
 
 EOM

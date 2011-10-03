@@ -1,13 +1,24 @@
 #!/usr/bin/perl
 
 my $rel;
-if ($ARGV[0] =~ /^\-/) {
+my $swap;
+my $src;
+while ($ARGV[0] =~ /^\-/) {
     my $opt = shift @ARGV;
     if ($opt eq '-r' || $opt eq '--rel') {
         $rel = shift;
     }
-    if ($opt eq '--is_a') {
+    elsif ($opt eq '--is_a') {
         $rel = 'is_a';
+    }
+    elsif ($opt eq '--synonym') {
+        $rel = 'synonym';
+    }
+    elsif ($opt eq '--swap') {
+        $swap = 1;
+    }
+    elsif ($opt eq '--source') {
+        $src = shift @ARGV;
     }
 }
 my %linkh = ();
@@ -18,15 +29,26 @@ while (<>) {
     s/\s+$//;
     next unless $_;
     my @cols = split(/\t/);
+    if (@cols == 4) {
+        @cols = ("$cols[0] ! $cols[1]","$cols[2] ! $cols[3]");
+    }
     foreach (@cols) {
 	if (/^(\S+:\d+)\-(.*)/) {
 	    $_ = "$1 ! $2";
 	}
+        if ($src) {
+            s/ \! / {source="$src"} \! /;
+        }
     }
     if (!$rel) {
         $rel = shift @cols;
     }
-    push(@{$linkh{$cols[0]}->{$rel}},$cols[1]);
+    if ($swap) {
+        push(@{$linkh{$cols[1]}->{$rel}},$cols[0]);
+    }
+    else {
+        push(@{$linkh{$cols[0]}->{$rel}},$cols[1]);
+    }
     
 }
 
@@ -36,6 +58,9 @@ foreach my $id (keys %linkh) {
     foreach my $rel (keys %$relh) {
         if ($rel eq 'xref') {
             print "xref: $_\n" foreach @{$relh->{$rel}};
+        }
+        elsif ($rel eq 'synonym') {
+            print "$rel: \"$_\" EXACT []\n" foreach @{$relh->{$rel}};
         }
         elsif ($rel eq 'is_a') {
             print "is_a: $_\n" foreach @{$relh->{$rel}};
