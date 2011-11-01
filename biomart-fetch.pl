@@ -21,7 +21,7 @@ while (scalar(@ARGV) && $ARGV[0] =~ /^\-.+/) {
     }
     elsif ($opt eq '--preset') {
         my $preset = shift @ARGV;
-        @atts = presets()->{$preset};
+        @atts = @{presets()->{$preset}};
         if (!@atts) {
             die "no such preset: $preset";
         }
@@ -38,13 +38,13 @@ while (scalar(@ARGV) && $ARGV[0] =~ /^\-.+/) {
 }
 push(@atts, @ARGV);
 
-if (!@atts)
+if (!@atts) {
     @atts = qw(ensembl_gene_id entrezgene);
 }
 elsif (@atts == 1) {
     push(@atts,'entrezgene');
 }
-print STDERR "ATTS: @atts\n";
+#print STDERR "ATTS: @atts\n";
 
 my $xml = mk_xml();
 
@@ -56,7 +56,7 @@ my $response;
 $ua->request($request, 
 	     sub{   
 		 my($data, $response) = @_;
-		 if ($response->is_success) {
+		 if ($response->is_success && $data !~ /^Query ERROR/) {
 		     print "$data";
 		 }
 		 else {
@@ -69,7 +69,9 @@ exit 0;
 
 sub presets {
     {
-        basic=>[qw(ensembl_gene_id external_gene_id gene_biotype entrezgene ox_refseq_mrna__dm_dbprimary_acc_1074 ox_refseq_ncrna__dm_dbprimary_acc_1074)]
+        basic=>[qw(ensembl_gene_id external_gene_id gene_biotype entrezgene ox_refseq_mrna__dm_dbprimary_acc_1074 ox_refseq_ncrna__dm_dbprimary_acc_1074)],
+        zfin=>[qw(ensembl_gene_id zfin_id uniprot_sptrembl)],
+        zfin_expr=>[qw(ensembl_gene_id zfin_id anatomical_system_zfin)],
     };
 }
 
@@ -94,12 +96,17 @@ EOM
 }
 
 sub usage {
-    my $sn = scriptname();
+    my $sn = 'biomart-fetch.pl';
 
-    <<EOM;
+    <<FOOBAR;
 $sn [-a ATT1...] [-d DATASET] [-p PRESET...] ATTS
 
 Extracts data from BioMart
+
+Options:
+  -a ATTRIBUTE : For a full list of attributes go to http://www.ensembl.org/biomart
+  -d DATASET: default is hsapiens_gene_ensembl
+  -p PRESET : so for only one - basic
 
 Examples:
 
@@ -112,8 +119,11 @@ $sn -g entrezgene
 # use an existing packaged set of annotations
 $sn --preset basic
 
-For a full list of attributes go to http://www.ensembl.org/biomart
+# preset for zfin IDs
+$sn  -d drerio_gene_ensembl --preset zfin
 
-EOM
+
+
+FOOBAR
 }
 

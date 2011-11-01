@@ -14,6 +14,7 @@ my $regex_filter;
 my $replace_ids;
 my $freetext;
 my $tabchar = "\t";
+my @maptblfs = ();
 while ($ARGV[0] =~ /^\-/) {
     my $opt = shift @ARGV;
     if ($opt eq '-h' || $opt eq '--help') {
@@ -37,6 +38,9 @@ while ($ARGV[0] =~ /^\-/) {
     }
     elsif ($opt eq '--xref-idspace') {
         $xref_idspace = shift @ARGV;
+    }
+    elsif ($opt eq '-m' || $opt eq '--map-table') {
+        push(@maptblfs, shift @ARGV);
     }
     elsif ($opt eq '-y' || $opt eq '--use-xref-inverse') {
         $use_xref_inverse = 1;
@@ -127,6 +131,17 @@ while (<>) {
 	delete $validh{$id};
         $obsh{$id} = 1;
     }
+}
+
+foreach (@maptblfs) {
+    open(F,$_) || die $_;
+    while (<F>) {
+        chomp;
+        my ($id,$x) = split(/\t/,$_);
+        push(@{$xrefh{$id}},$x);
+        push(@{$invxrefh{$1}},$id);
+    }
+    close(F);
 }
 
 if ($use_consider) {
@@ -372,6 +387,9 @@ If you want to map multiple files:
 $sn [--use-consider] [--use-replaced_by] [--use-xref] [--use-xref-inverse] MAPPING-FILE-1 [MAPPING-FILE-n...] -i FILE-TO-MAP1 [FILE-TO-MAP-2...]
 
 by default the file(s) to map are obo files. If the -k option is set, then a tab file is assumed.
+
+EXAMPLES:
+
 
 
 EOM

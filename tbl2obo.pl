@@ -22,11 +22,18 @@ sub print_term {
     my $id = shift;
     my $n = shift;
     my $s;
-    if ($n =~ /(.*)\t(.*)/) {
+    my $d;
+    if ($n =~ /(.*)\t(.*)\t(.*)/) {
+        $n = $1;
+        $s = $2; 
+        $d = $3;
+    }
+    elsif ($n =~ /(.*)\t(.*)/) {
         $n = $1;
         $s = $2; 
     }
     print "[Term]\nid: $id\nname: $n\n";
     print "synonym: \"$s\" EXACT []\n" if $s;
+    print "def: \"$d\" []\n" if $d;
     print "\n";
 }
