@@ -1,6 +1,7 @@
 #!/usr/bin/perl
 while(<>) {
     chomp;
+    s/ENTREZ/NCBIGene/g;
     my @vals = split(/\t/);
     if (@vals == 6) {
         splice(@vals,3,2,("$vals[3]/$vals[4]"));
