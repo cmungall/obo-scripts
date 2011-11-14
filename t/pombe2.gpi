@@ -1,0 +1,26 @@
+!gpi-version: 1.0
+!file generated at 2011-11-10 16:41:48 from pombe-sample.gaf
+!
+!columns:
+!db	db_gp_form_id	db_object_symbol	db_object_name	db_object_synonym	db_object_type	taxon	parent_gp_id	gp_xrefs
+!
+GeneDB_Spombe	SPAC1002.10c	sgt1	SGT1 family transcriptional regulator Sgt1	SPAC1002.10c|sgt1	gene	4896		
+GeneDB_Spombe	SPAC227.11c	SPAC227.11c	sensor for misfolded ER glycoproteins Yos9	SPAC227.11c	gene	4896		
+GeneDB_Spombe	SPBC14F5.03c	kap123	karyopherin Kap123	SPBC14F5.03c|kap123	gene	4896		
+GeneDB_Spombe	SPBC14F5.04c	pgk1	phosphoglycerate kinase Pgk1	SPBC14F5.04c|pgk1	gene	4896		
+GeneDB_Spombe	SPBC1861.04c	SPBC1861.04c	RNA-binding protein Prp24	SPBC1861.04c	gene	4896		
+GeneDB_Spombe	SPBC336.01	fbh1	DNA helicase I	SPBC336.01|fbh1|fdh1|fdh	gene	4896		
+GeneDB_Spombe	SPBC336.02	SPBC336.02	18S rRNA dimethylase	SPBC336.02	gene	4896		
+GeneDB_Spombe	SPBC336.03	efc25	Ras1 guanyl-nucleotide exchange factor Efc25	SPBC336.03|efc25	gene	4896		
+GeneDB_Spombe	SPBC336.04	cdc6	DNA polymerase delta catalytic subunit Cdc6	SPBC336.04|cdc6|pol3|pold|mis10	gene	4896		
+GeneDB_Spombe	SPBC336.07	sfc3	transcription factor TFIIIC complex B box binding subunit Sfc3	SPBC336.07|sfc3	gene	4896		
+GeneDB_Spombe	SPBC336.08	spc24	spindle pole body protein Spc24	SPBC336.08|spc24	gene	4896		
+GeneDB_Spombe	SPBC405.04c	ypt7	GTPase Ypt7	SPBC405.04c|ypt7	gene	4896		
+GeneDB_Spombe	SPBTRNAASP.04	SPBTRNAASP.04	tRNA Aspartic acid	SPBTRNAASP.04	gene	4896		
+GeneDB_Spombe	SPCC16C4.17	mug123	meiotically upregulated gene Mug123	SPCC16C4.17|mug123	gene	4896		
+GeneDB_Spombe	SPCC16C4.19	SPCC16C4.19	RNase MRP subunit	SPCC16C4.19|SPCC5E4.08	gene	4896		
+GeneDB_Spombe	SPCC16C4.22	SPCC16C4.22	histone-like transcription factor family	SPCC16C4.22	gene	4896		
+GeneDB_Spombe	SPCC1884.02	nic1	NiCoT heavy metal ion transporter Nic1	SPCC1884.02|nic1|SPCC757.01	gene	4896		
+GeneDB_Spombe	SPCC297.03	ssp1	serine/threonine protein kinase Ssp1	SPCC297.03|ssp1	gene	4896		
+GeneDB_Spombe	SPCC297.05	SPCC297.05	diacylglycerol binding protein	SPCC297.05	gene	4896		
+GeneDB_Spombe	googleplex	sipsupsop	an exciting made up GP	tic|tac|toe	gene_transcript	4896	GeneDB_Spombe:SPCC297.03	
