@@ -19,7 +19,7 @@ BEGIN {
 use lib ($dist_dir, $bin_dir);
 
 use GOBO::Logger;
-use GOBO::AnnotationFormats qw(get_file_format get_gaf_spec get_gpi_spec get_gpad_spec transform can_transform);
+use GOBO::AnnotationFormats qw(get_file_format get_gaf_spec get_gpi_spec get_gpad_spec transform can_transform write_errors);
 
 my $logger;
 
@@ -52,6 +52,11 @@ sub process_gaf {
 
 	open (GPAD, "> " . $opt->{gpad}) or $logger->logdie("Unable to open " . $opt->{gpad} . ": $!");
 	open (GPI, "> " . $opt->{gpi}) or $logger->logdie("Unable to open " . $opt->{gpi} . ": $!");
+
+	if ($opt->{'log'})
+	{	open (my $log_fh, "> " . $opt->{'log'}) or $logger->logdie("Unable to open " . $opt->{gpi} . ": $!");
+		$opt->{log_fh} = $log_fh;
+	}
 
 	print GPAD "!gpad-version: " . $gpad->{version}{major} . $gpad->{version}{minor} ."\n"
 	. "!file generated at $timestamp from " . $opt->{gaf} . " by " . scr_name() . "\n!\n"
@@ -101,11 +106,10 @@ sub process_gaf {
 		if (! $metadata->{by_id}{ $id })
 		{	#my @gpi_line = ( ('') x ((scalar keys %{$gpi->{by_col}}) + 1) );
 			my @gpi_line;
-			$logger->info("getting GPI data for $id");
+#			$logger->info("getting GPI data for $id");
 
 			foreach my $col (keys %{$gpi->{by_col}})
-			{	$logger->info("GPI: looking at $col...");
-				## do we have this data?
+			{	## do we have this data?
 				if ($gaf->{by_col}{ $col })
 				{	$gpi_line[ $gpi->{by_col}{ $col } ] = $gaf_line[ $gaf->{by_col}{ $col } ] || '';
 				}
@@ -113,27 +117,25 @@ sub process_gaf {
 				{	## the data needs to be transformed
 					$gpi_line[ $gpi->{by_col}{ $col } ] = transform( $col,
 						id => $id,
-						logger => $logger,
+						errs => \$errs,
 						gaf_data => [ @gaf_line ],
 					) || '';
 				}
 				else
-				{	$errs->{gpi}{unknown_col}{$col}++;
-					$logger->error("GPI: Don't know what to do with $col data!!");
+				{	$errs->{gaf}{unknown_gpi_col}{$col}++;
 					$gpi_line[ $gpi->{by_col}{ $col } ] = '';
 				}
 			}
 			shift @gpi_line;
 			$metadata->{by_id}{$id} = \@gpi_line;
-			$logger->info("$id gpi_line: " . join(", ", @gpi_line));
+#			$logger->info("$id gpi_line: " . join(", ", @gpi_line));
 		}
 
 		my @gpad_line;
 #		my @gpad_line = ( ('') x ((scalar keys %{$gpad->{by_col}}) + 1) );
 		## gather the data
 		foreach my $col (keys %{$gpad->{by_col}})
-		{	#$logger->info("looking at $col...");
-			## do we have this data?
+		{	## do we have this data?
 			if ($gaf->{by_col}{ $col })
 			{	$gpad_line[ $gpad->{by_col}{ $col } ] = $gaf_line[ $gaf->{by_col}{ $col } ] || '';
 			}
@@ -141,13 +143,13 @@ sub process_gaf {
 			{	## the data needs to be transformed
 				$gpad_line[ $gpad->{by_col}{ $col } ] = transform( $col,
 					id => $id,
-					logger => $logger,
+					errs => \$errs,
 					gaf_data => [ @gaf_line ],
+				#	logger => $logger,
 				) || '';
 			}
 			else
-			{	$errs->{gpad}{unknown_col}{$col}++;
-#				$logger->error("GPAD: Don't know what to do with $col data!!");
+			{	$errs->{gaf}{unknown_gpad_col}{$col}++;
 				$gpad_line[ $gpad->{by_col}{ $col } ] = '';
 			}
 		}
@@ -158,7 +160,6 @@ sub process_gaf {
 		print GPAD join("\t", @gpad_line) . "\n";
 	}
 
-	$logger->info("metadata: " . Dumper($metadata));
 	# dump the gpi file
 	foreach my $id (sort keys %{$metadata->{by_id}}) {
 		my ($db, $key) = split(/:/, $id, 2);
@@ -170,7 +171,13 @@ sub process_gaf {
 	close GPAD;
 	close GPI;
 
-	$logger->error( Dumper($errs) );
+	if ($errs)
+	{	write_errors( errs => $errs, options => $opt, logger => $logger );
+	}
+
+	if ($opt->{'log'})
+	{	close $opt->{log_fh};
+	}
 }
 
 # parse the options from the command line
@@ -193,6 +200,11 @@ sub parse_options {
 		elsif ($o eq '--gpad') {
 			if (@$args && $args->[0] !~ /^\-/)
 			{	$opt->{gpad} = shift @$args;
+			}
+		}
+		elsif ($o eq '-l' || $o eq '--log') {
+			if (@$args && $args->[0] !~ /^\-/)
+			{	$opt->{'log'} = shift @$args;
 			}
 		}
 		elsif ($o eq '-h' || $o eq '--help') {
@@ -261,6 +273,11 @@ sub check_options {
 			$opt->{$g} .= ".$g";
 			$logger->info("file name: " . $opt->{$g});
 		}
+	}
+
+	if ($opt->{galaxy} && ! $opt->{'log'})
+	{	## we need a log file if we're in Galaxy mode
+		push @$errs, "specify a log file if using the script in Galaxy mode";
 	}
 
 	if (! $opt->{gaf})

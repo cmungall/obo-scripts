@@ -18,7 +18,7 @@ BEGIN {
 use lib ($dist_dir, $bin_dir);
 
 use GOBO::Logger;
-use GOBO::AnnotationFormats qw(get_file_format get_gaf_spec get_gpi_spec get_gpad_spec transform can_transform);
+use GOBO::AnnotationFormats qw(get_file_format get_gaf_spec get_gpi_spec get_gpad_spec transform can_transform write_errors);
 
 my $logger;
 my $metadata;
@@ -35,6 +35,12 @@ sub run_script {
 
 	my $options = parse_options(@_);
 	$logger->info("Parsed options. Starting script!");
+
+	## initialise the log file if we're using one.
+	if ($options->{'log'})
+	{	open (my $log_fh, "> " . $options->{'log'}) or $logger->logdie("Unable to open " . $options->{gpi} . ": $!");
+		$options->{log_fh} = $log_fh;
+	}
 
 	## pull in the GPI data
 	read_gpi($options);
@@ -66,16 +72,18 @@ sub read_gpi {
 	}
 	close GPI;
 
+	my $errs;
 	## check that there is only one parent for each spliceform
 	if ($metadata->{parent} && keys %{$metadata->{parent}})
 	{	foreach my $p (keys %{$metadata->{parent}})
 		{	my @pars = sort { $metadata->{parent}{$p}{$a} <=> $metadata->{parent}{$p}{$b} } keys %{$metadata->{parent}{$p}};
 			if (scalar @pars > 1)
-			{	$logger->error("$p has more than one parent_gp_id! Using most common parent ID.");
+			{	$errs->{gpi}{too_many_parents}{$p}++;
 			}
 			$metadata->{parent}{$p} = $pars[0];
 		}
 	}
+
 }
 
 sub read_ontology {
@@ -102,15 +110,15 @@ sub read_ontology {
 						{	$metadata->{ns_by_id}{$id} = 'C';
 						}
 						else
-						{	push @{$errs->{invalid_ns}{$1}}, $id;
+						{	push @{$errs->{ont}{invalid_ns}{$1}}, $id;
 						}
 					}
 					else
-					{	push @{$errs->{no_ns}}, $id;
+					{	push @{$errs->{ont}{no_ns}}, $id;
 					}
 				}
 				else
-				{	push @{$errs->{no_id}}, $_;
+				{	push @{$errs->{ont}{no_id}}, $_;
 				}
 			}
 		}
@@ -119,18 +127,10 @@ sub read_ontology {
 
 	## make sure we got SOME data!
 	if (! $metadata->{ns_by_id} || (scalar keys %{$metadata->{ns_by_id}}) == 0)
-	{	$logger->error("No ID namespace data found!");
+	{	$logger->logdie("No ontology namespace data found: please check the ontology file and rerun the script.");
 	}
 	if ($errs && keys %$errs)
-	{	if ($errs->{no_id})
-		{	$logger->error("Found " . (scalar @{$errs->{no_id}}) . " term stanzas with no ID");
-		}
-		if ($errs->{no_ns})
-		{	$logger->error("Found " . (scalar @{$errs->{no_ns}}) . " term stanzas with no namespace:\n" . join(", ", @{$errs->{no_ns}} ) );
-		}
-		if ($errs->{invalid_ns})
-		{	$logger->error("Found term stanzas with an invalid namespace:\n" . join("\n", map { "$_: " . join(", ", @{$errs->{invalid_ns}{$_}}) } sort keys %{$errs->{invalid_ns}} ) );
-		}
+	{
 	}
 }
 
@@ -152,8 +152,7 @@ sub process_gpad {
 
 #	my $log = "gpx2gaf_log.$suffix";
 #	open (LOG, ">" . $opt->{log} ) or $logger->logdie("Unable to open " . $opt->{log} . " for writing: $!");
-
-
+	my $errs;
 	my $line_number = 0;
 	while (<GPAD>) {
 		$line_number++;
@@ -165,7 +164,7 @@ sub process_gpad {
 			# pass all other comments through unchanged
 			print GAF;
 			next;
-		};
+		}
 
 		# tokenise line
 		chomp;
@@ -231,6 +230,7 @@ sub process_gpad {
 				## data needs to be transformed in some way
 				$gaf_line[ $gaf->{by_col}{$col} ] = transform($col,
 					id => $id,
+					errs => \$errs,
 					logger => $logger,
 					metadata => $metadata,
 					gpad_data => [ @gpad_line ],
@@ -247,56 +247,18 @@ sub process_gpad {
 
 		shift @gaf_line;
 		print GAF join("\t", @gaf_line) . "\n";
-=cut
-		my $key = (defined($spliceform_id) && $spliceform_id ne '') ? $spliceform_id : "$db:$db_object_id";
-		if (!defined($metadata->{$key})) {
-			print LOG "$gpad ($line_number): metadata not found for $key\n";
-			next;
-		}
-		my @md = @{$metadata->{$key}}; # $md[0] = db, $md[1] = db_object_id, $md[2] = db_object_symbol, $md[3] = db_object_name, $md[4] = db_object_synonym, $md[5] = db_object_type, $md[6] = taxon
+	}
 
-
-		# translate ECO id to GO evidence code
-		my $ev = $eco2ev{$evidence_code};
-		if (!defined($ev)) {
-			print LOG "$gpad ($line_number): unsupported/unrecognised evidence code ($evidence_code)\n";
-			next;
-		}
-
-		# deal with qualifier, relation and aspect
-		my ($aspect, $qual);
-		foreach my $rel (keys %relations) {
-			if ($relation =~ /^$rel$/) {
-				$aspect = $relations{$rel}{aspect};
-				$qual = $relations{$rel}{gaf_equivalent};
-				last;
-			}
-		}
-		if (!defined($aspect)) {
-			print LOG "$gpad ($line_number): unsupported/unrecognised relation ($relation)\n";
-			next;
-		}
-		if (!defined($qual)) {
-			print LOG "$gpad ($line_number): relation not supported in GAF 2.0 format ($relation)\n";
-			next;
-		}
-
-		if ($qualifier eq 'NOT') {
-			$qual = ($qual eq '') ? $qualifier : "$qualifier|$qual";
-		}
-
-		# interacting taxon
-		my $tax = (defined($interacting_taxon) && $interacting_taxon ne '') ? "$md[6]|$interacting_taxon" : $md[6];
-
-		# output the annotation in GAF 2.0 format
-		print GAF "$db\t$db_object_id\t$md[2]\t$qual\t$go_id\t$reference\t$ev\t$with\t$aspect\t$md[3]\t$md[4]\t$md[5]\t$tax\t$date\t$assigned_by\t$annotation_extension\t$spliceform_id\n";
-=cut
+	if ($errs)
+	{	write_errors( errs => $errs, options => $opt, logger => $logger );
 	}
 
 	# all done
 	close GPAD;
 	close GAF;
-#	close LOG;
+	if ($opt->{'log'})
+	{	close $opt->{log_fh};
+	}
 }
 
 
@@ -327,11 +289,11 @@ sub parse_options {
 			{	$opt->{ontology} = shift @$args;
 			}
 		}
-#		elsif ($o eq '-l' || $o eq '--log') {
-#			if (@$args && $args->[0] !~ /^\-/)
-#			{	$opt->{log} = shift @$args;
-#			}
-#		}
+		elsif ($o eq '-l' || $o eq '--log') {
+			if (@$args && $args->[0] !~ /^\-/)
+			{	$opt->{log} = shift @$args;
+			}
+		}
 		elsif ($o eq '-h' || $o eq '--help') {
 			system("perldoc", $0);
 			exit(0);
@@ -387,6 +349,11 @@ sub check_options {
 	}
 	undef $errs;
 
+	if ($opt->{galaxy} && ! $opt->{'log'})
+	{	## we need a log file if we're in Galaxy mode
+		push @$errs, "specify a log file if using the script in Galaxy mode";
+	}
+
 	my $h = {
 		gpad => $gpad,
 		gpi => $gpi,
@@ -426,7 +393,7 @@ sub check_options {
 	if (! $opt->{gaf})
 	{	push @$errs, "specify an output (GAF) file using -o /path/to/file";
 	}
-	elsif ($opt->{gaf} !~ /\.gaf$/i)
+	elsif ($opt->{gaf} !~ /\.gaf$/i && ! $opt->{galaxy})
 	{	## make sure the file ending is 'gaf'
 		$opt->{gaf} .= '.gaf';
 		$logger->info("Appending '.gaf' to output file name");

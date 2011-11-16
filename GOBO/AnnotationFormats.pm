@@ -4,7 +4,7 @@ use strict;
 use warnings;
 use Data::Dumper;
 use base 'Exporter';
-our @EXPORT = qw(get_file_format get_gpi_spec get_gaf_spec get_gpad_spec transform can_transform);
+our @EXPORT = qw(get_file_format get_gpi_spec get_gaf_spec get_gpad_spec transform can_transform write_errors);
 
 =head2 GPI fields
 
@@ -323,13 +323,13 @@ my $relations = {
 };
 
 my $transforms = {
+	## creating GAF from GPI and GPAD files
 	## GPAD int taxon + GPI taxon => GAF taxon int taxon
 	'taxon_int_taxon' => sub {
 		my %args = (@_);
 		## concatenate gpi taxon and gpad int_taxon
 		if ($args{gpad_data}->[ $gpad->{by_col}{interacting_taxon} ] ne "")
-		{	#print STDERR "gpad data, interacting taxon: " . $args{gpad_data}->[ $gpad->{by_col}{interacting_taxon} ] . "\n";
-			return join('|', map { "taxon:$_" } ($args{gpi_data}->[ $gpi->{by_col}{taxon} ], $args{gpad_data}->[ $gpad->{by_col}{interacting_taxon} ]) );
+		{	return join('|', map { "taxon:$_" } ($args{gpi_data}->[ $gpi->{by_col}{taxon} ], $args{gpad_data}->[ $gpad->{by_col}{interacting_taxon} ]) );
 		}
 		else
 		{	return "taxon:" . $args{gpi_data}->[ $gpi->{by_col}{taxon} ];
@@ -344,7 +344,7 @@ my $transforms = {
 		{	return $args{ontology}->{ $args{gpad_data}->[$gpad->{by_col}{go_id}] };
 		}
 		else
-		{	$args{logger}->error("No namespace for " . $args{gpad_data}->[$gpad->{by_col}{go_id}]);
+		{	${$args{errs}}->{gpad}{no_aspect}{ $args{gpad_data}->[$gpad->{by_col}{go_id}] }++;
 			return "";
 		}
 	},
@@ -355,7 +355,7 @@ my $transforms = {
 		{	return $eco2ev->{ $args{gpad_data}->[ $gpad->{by_col}{eco_id} ]};
 		}
 		else
-		{	$args{logger}->error("No mapping for " . $args{gpad_data}->[ $gpad->{by_col}{eco_id} ]);
+		{	${$args{errs}}->{gpad}{no_ev_code}{ $args{gpad_data}->[ $gpad->{by_col}{eco_id} ]}++;
 			return "";
 		}
 	},
@@ -378,9 +378,7 @@ my $transforms = {
 	'gp_form_id' => sub {
 		my %args = (@_);
 		if ($args{parent} =~ /\w/)
-		{	## get the by_child_id data
-#			print STDERR "id: $args{id}; by_child_id data: " . Dumper($args{metadata}->{by_child_id}{ $args{id} });
-#			print STDERR "gpi data: " . Dumper($args{gpi_data}) . "Looking at cols " . $gpi->{by_col}{db} . " and " . $gpi->{by_col}{db_gp_form_id}. "\n";
+		{	## return the child ID
 			return $args{id};
 		}
 		return;
@@ -403,7 +401,6 @@ my $transforms = {
 		my %args = (@_);
 		## split up the taxon and interacting taxon
 		my @taxa = map { s/taxon://g; $_ } split(/\|/, $args{gaf_data}->[ $gaf->{by_col}{taxon_int_taxon} ]);
-#		print STDERR "taxa: " . Dumper(\@taxa);
 		return $taxa[0];
 	},
 	'interacting_taxon' => sub {
@@ -417,10 +414,14 @@ my $transforms = {
 		my %args = (@_);
 		my $ev = $args{gaf_data}->[ $gaf->{by_col}{evidence_code} ];
 		my $ref = $args{gaf_data}->[ $gaf->{by_col}{reference} ];
-
-#		print STDERR "ev: " . ($ev||"undef") . "; ref: " . ($ref||"undef") . "\n";
 		# translate the evidence code into the appropriate ECO identifier
-		return $ev2eco->{$ev}{$ref} || $ev2eco->{$ev}{'default'};
+		if ($ev2eco->{$ev})
+		{	return $ev2eco->{$ev}{$ref} || $ev2eco->{$ev}{'default'};
+		}
+		else
+		{	${$args{errs}}->{gaf}{no_eco_id}{$ev}++;
+			return '';
+		}
 	},
 	'relationship' => sub {
 		my %args = (@_);
@@ -438,7 +439,7 @@ my $transforms = {
 
 		## get the term aspect and add the relationship
 		if (! $aspect2rln->{ $args{gaf_data}->[ $gaf->{by_col}{aspect} ] })
-		{	$args{logger}->error("Invalid aspect: " . $args{gaf_data}->[ $gaf->{by_col}{aspect} ]);
+		{	${$args{errs}}->{gaf}{invalid_aspect}{ $gaf->{by_col}{aspect} }++;
 			push @rlns, $aspect2rln->{ 'default' };
 		}
 		else
@@ -478,10 +479,114 @@ sub transform {
 
 sub can_transform {
 	my $tfm = shift;
-
-#	print STDERR "possible transforms: " . join(", ", keys %$transforms) . "\n\n";
 	return 1 if $transforms->{$tfm};
 	return;
+}
+
+
+##	write_errors( errs => $errs, options => $opt, logger => $logger );
+
+sub write_errors {
+	my %args = (@_);
+	my $msg;
+
+	return unless $args{errs} && keys %{$args{errs}};
+	my $errs = $args{errs};
+
+	if ($errs->{gaf})
+	{	$msg .= "Errors in GAF file\n";
+
+		foreach my $key (keys %{$errs->{gaf}})
+		{	##
+			if ($key eq 'unknown_gpi_col')
+			{	$msg .= "Unknown column found when creating GPI file. Affects:\n" . join(", ", sort keys %{$errs->{gaf}{unknown_gpi_col}}) . "\n\n";
+			}
+			elsif ($key eq 'unknown_gpad_col')
+			{	$msg .= "Unknown column found when creating GPAD file. Affects:\n" . join(", ", sort keys %{$errs->{gaf}{unknown_gpad_col}}) . "\n\n";
+			}
+			elsif ($key eq 'no_eco_id')
+			{	$msg .= "No corresponding ECO IDs found for the following evidence codes:\n" . join(", ", sort keys %{$errs->{gaf}{no_eco_id}}) . "\n\n";
+			}
+			elsif ($key eq 'invalid_aspect')
+			{	$msg .= "Invalid aspect found in GAF file:\n" . join(", ", sort keys %{$errs->{gaf}{invalid_aspect}} ) . "\n\n";
+			}
+			else
+			{	$msg .= "Unexplained error of type $key found\n\n";
+			}
+		}
+		$msg .= "\n\n";
+		delete $errs->{gaf};
+	}
+
+	if ($errs->{gpi})
+	{	$msg .= "Errors in GPI file\n";
+		foreach my $key (keys %{$errs->{gpi}})
+		{	if ($key eq 'too_many_parents')
+			{	$msg .= "More than one parent_gp_id found; most common parent ID used. Affects:\n" . join(", ", sort keys %{$errs->{gpi}{too_many_parents}} ) . "\n\n";
+			}
+			else
+			{	$msg .= "Unexplained error of type $key found\n\n";
+			}
+		}
+		$msg .= "\n\n";
+		delete $errs->{gpi};
+	}
+
+	if ($errs->{gpad})
+	{	$msg .= "Errors in GPAD file\n";
+
+		foreach my $key (keys %{$errs->{gpad}})
+		{
+			if ($key eq 'no_aspect')
+			{	$msg .= "Found terms with no namespace or that are obsolete:\n" . join(", ", sort keys %{$errs->{gpad}{no_aspect}} ) . "\n\n";
+			}
+			elsif ($key eq 'no_ev_code')
+			{	$msg .= "No mapping for the following ECO IDs:\n" . join(", ", sort keys %{$errs->{gpad}{no_ev_code}} ) . "\n\n";
+			}
+			else
+			{	$msg .= "Unexplained error of type $key found\n\n";
+			}
+		}
+		$msg .= "\n\n";
+		delete $errs->{gpad};
+	}
+
+	if ($errs->{ont})
+	{	$msg .= "Errors in ontology file\n";
+
+		foreach my $key (keys %{$errs->{ont}})
+		{	if ($key eq 'no_id')
+			{	$msg .= "Found " . (scalar @{$errs->{ont}{no_id}}) . " term stanzas with no ID\n";
+			}
+			elsif ($key eq 'no_ns')
+			{	$msg .= "Found " . (scalar @{$errs->{ont}{no_ns}}) . " term stanzas with no namespace:\n" . join(", ", @{$errs->{ont}{no_ns}} ) . "\n\n";
+			}
+			elsif ($key eq 'invalid_ns')
+			{	$msg .= "Found term stanzas with an invalid namespace:\n" . join("\n", map { "$_: " . join(", ", @{$errs->{ont}{invalid_ns}{$_}}) } sort keys %{$errs->{ont}{invalid_ns}} )  . "\n\n";
+			}
+			else
+			{	$msg .= "Unexplained error of type $key found\n\n";
+			}
+		}
+
+		$msg .= "\n\n";
+		delete $errs->{ont};
+	}
+
+	if (keys %$errs)
+	{	foreach (keys %$errs)
+		{	$msg .= "Unexplained error of type $_ found\n";
+		}
+	}
+
+	if ($args{options}->{log_fh})
+	{	my $fh = $args{options}->{log_fh};
+		print $fh $msg;
+	}
+	else
+	{	$args{logger}->error( $msg );
+	}
+
 }
 
 1;
