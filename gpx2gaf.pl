@@ -1,4 +1,60 @@
-#!/usr/bin/perl
+#!/usr/bin/perl -w
+
+=head1 NAME
+
+gpx2gaf.pl
+
+=head1 SYNOPSIS
+
+ gpx2gaf.pl --gpad /path/to/gpad_file.gpad --gpi /path/to/gpi_file.gpi --ontology /path/to/ontology_file.obo --gaf /path/for/output_file.gaf
+
+=head1 DESCRIPTION
+
+Converts GPAD and GPI files into a GAF 2.0 file
+
+=head2 Input parameters
+
+=head3 Required
+
+=over
+
+=item --gpad /path/to/file_name
+
+input annotation file, GPAD format
+
+=item --gpi /path/to/file_name
+
+input gene product info file, GPI format
+
+=item -ont | --ontology /path/to/file_name
+
+input ontology file, OBO format; required to get namespace for terms
+
+=item -o | --gaf | --output /path/to/file_name
+
+the proposed GAF output file
+
+=back
+
+=head3 Optional switches
+
+=over
+
+=item -l || --log
+
+Saves all errors to a log file; otherwise, errors are printed out to STDERR
+
+=item -h || --help
+
+This useful guide to what's going on!
+
+=item -v || --verbose
+
+prints various messages during the execution of the script
+
+=back
+
+=cut
 
 use strict;
 use warnings;
@@ -62,25 +118,62 @@ sub read_gpi {
 		next if /^!/;
 		chomp;
 
+		## check whether it's an MGI ID or not
+		my $iso;
+		if ($_ !~ /^MGI/)
+		{	$iso++;
+		}
+
 		my @gpi_line = split(/\t/, $_);
 		unshift @gpi_line, "";
+
+		if (! $gpi_line[ $gpi->{by_col}{gp_form_db} ] )
+		{	$logger->error("No value for db gp form:\n" . @gpi_line);
+		}
+		if (! $gpi_line[ $gpi->{by_col}{gp_form_id} ] )
+		{	$logger->error("No value for db gp form id:\n" . @gpi_line);
+		}
+
 		## does this GP have a parent GP?
 		if (defined $gpi_line[ $gpi->{by_col}{parent_gp_id} ])
-		{	$metadata->{parent}{ $gpi_line[ $gpi->{by_col}{db} ] . ":" . $gpi_line[ $gpi->{by_col}{db_gp_form_id} ] }{$gpi_line[ $gpi->{by_col}{parent_gp_id} ]}++;
+		{
+			$metadata->{parent}{ $gpi_line[ $gpi->{by_col}{gp_form_db} ] . ":" . $gpi_line[ $gpi->{by_col}{gp_form_id} ] }{$gpi_line[ $gpi->{by_col}{parent_gp_id} ]}++;
+
+			$metadata->{child}{$gpi_line[ $gpi->{by_col}{parent_gp_id} ]}{ $gpi_line[ $gpi->{by_col}{gp_form_db} ] . ":" . $gpi_line[ $gpi->{by_col}{gp_form_id} ] }++;
+
+			$metadata->{all_ids}{$gpi_line[ $gpi->{by_col}{parent_gp_id} ]}++;
 		}
-		$metadata->{by_id}{ $gpi_line[ $gpi->{by_col}{db} ] . ":" . $gpi_line[ $gpi->{by_col}{db_gp_form_id} ] } = [ @gpi_line ];
+		else
+		{	if ($iso)
+			{	$logger->error("No parent for isoform " . $gpi_line[ $gpi->{by_col}{gp_form_db} ] . ":" . $gpi_line[ $gpi->{by_col}{gp_form_id} ]);
+			}
+		}
+
+		$metadata->{by_id}{ $gpi_line[ $gpi->{by_col}{gp_form_db} ] . ":" . $gpi_line[ $gpi->{by_col}{gp_form_id} ] } = [ @gpi_line ];
+
+		$metadata->{all_ids}{ $gpi_line[ $gpi->{by_col}{gp_form_db} ] . ":" . $gpi_line[ $gpi->{by_col}{gp_form_id} ] }++;
+
+
 	}
 	close GPI;
+
+#	$logger->error("parent hash: " . Dumper($metadata->{parent}));
+
+	foreach my $id (keys %{$metadata->{all_ids}})
+	{	if (! $metadata->{by_id}{$id} || scalar @{$metadata->{by_id}{$id}} < 1)
+		{	$logger->error("No metadata for $id!");
+		}
+	}
 
 	my $errs;
 	## check that there is only one parent for each spliceform
 	if ($metadata->{parent} && keys %{$metadata->{parent}})
-	{	foreach my $p (keys %{$metadata->{parent}})
-		{	my @pars = sort { $metadata->{parent}{$p}{$a} <=> $metadata->{parent}{$p}{$b} } keys %{$metadata->{parent}{$p}};
+	{	foreach my $i (keys %{$metadata->{parent}})
+		{	my @pars = sort { $metadata->{parent}{$i}{$b} <=> $metadata->{parent}{$i}{$a} } keys %{$metadata->{parent}{$i}};
 			if (scalar @pars > 1)
-			{	$errs->{gpi}{too_many_parents}{$p}++;
+			{	$errs->{gpi}{too_many_parents}{$i}++;
 			}
-			$metadata->{parent}{$p} = $pars[0];
+			$metadata->{parent}{$i} = $pars[0];
 		}
 	}
 
@@ -152,6 +245,7 @@ sub process_gpad {
 
 #	my $log = "gpx2gaf_log.$suffix";
 #	open (LOG, ">" . $opt->{log} ) or $logger->logdie("Unable to open " . $opt->{log} . " for writing: $!");
+
 	my $errs;
 	my $line_number = 0;
 	while (<GPAD>) {
@@ -170,48 +264,52 @@ sub process_gpad {
 		chomp;
 		my @gpad_line = split(/\t/, $_);
 		unshift @gpad_line, "";
-		my $id = $gpad_line[ $gpad->{by_col}{db} ] . ":" . $gpad_line[  $gpad->{by_col}{db_gp_form_id} ];
+		my $id = $gpad_line[ $gpad->{by_col}{gp_form_db} ] . ":" . $gpad_line[  $gpad->{by_col}{gp_form_id} ];
 		my @gaf_line;
 
 		# get the appropriate set of metadata
 		# check if this is a spliceform
 		my $parent;
 		if ($metadata->{parent} && $metadata->{parent}{$id})
-		{	## do we already have this info stored?
+		{	$parent = $metadata->{parent}{$id};
+			## do we already have this info stored?
 			if (! $metadata->{by_child_id}{$id})
-			{	$parent = $metadata->{parent}{$id};
+			{
 				## find the ultimate parent for the $id
 				while ( defined $metadata->{parent}{$parent} )
 				{	$parent = $metadata->{parent}{$parent};
+				}
+			#	$logger->error("found parent $parent for $id!");
+				if ($metadata->{by_id}{$parent} && scalar @{$metadata->{by_id}{$parent}} < 1)
+				{	$logger->error("Don't have much metadata for $parent! :(");
 				}
 
 				## check that we have the metadata for the parent
 				if (! $metadata->{by_id}{$parent})
 				{	#print LOG "$gpad ($line_number): metadata not found for $id\n";
-					$logger->error("$line_number: metadata not found for $id");
+					$errs->{gpi}{no_metadata}{$parent}++;
+					$logger->error("$line_number: metadata not found for parent $parent of $id");
 					# we'll have to just use the metadata from the spliceform
 				}
 				else
 				{	## otherwise, store the metadata for ease of access
 					## db_object_type should be preserved
-					## id goes to gp_form_id
-					my $parent_gp_info = [ @{$metadata->{by_id}{ $parent }} ];
-					## swap in the appropriate type ID
-					$parent_gp_info->[ $gpi->{by_col}{db_object_type} ] = $metadata->{by_id}{$id}[ $gpi->{by_col}{db_object_type} ];
-					$metadata->{by_child_id}{$id} = $parent_gp_info;
-
-					$logger->info("parent_gp_info: " . Dumper($parent_gp_info));
-
+					## id goes to gp_object_form_id
+					$metadata->{by_child_id}{$id} = [ @{$metadata->{by_id}{ $parent }} ];
 				}
 			}
 		}
 
 		## gather the data to put into @new_line
 		foreach my $col (keys %{$gaf->{by_col}})
-		{	## is this GPI data?
-			if ($gpi->{by_col}{ $col })
-			{	#$logger->info("looking at $col: it's GPI info") if $parent;
-				## copy the data from metadata->{by_id}{$id}[ $gpi->{by_col}{$col} ]
+		{	## is this GPAD data?
+			if ($gpad->{by_col}{ $col })
+			{	#$logger->info("looking at $col: it's GPAD info") if $parent;
+				## copy the data from the gpad line
+				$gaf_line[ $gaf->{by_col}{$col} ] = $gpad_line[ $gpad->{by_col}{$col} ] || "";
+			}
+			elsif ($gpi->{by_col}{ $col })
+			{	## copy the data from metadata->{by_id}{$id}[ $gpi->{by_col}{$col} ]
 				$gaf_line[ $gaf->{by_col}{$col} ] =
 				## if this is a spliceform
 				$metadata->{by_child_id}{$id}[ $gpi->{by_col}{$col} ] ||
@@ -220,24 +318,20 @@ sub process_gpad {
 				## no value
 				"";
 			}
-			elsif ($gpad->{by_col}{ $col })
-			{	#$logger->info("looking at $col: it's GPAD info") if $parent;
-				## copy the data from the gpad line
-				$gaf_line[ $gaf->{by_col}{$col} ] = $gpad_line[ $gpad->{by_col}{$col} ] || "";
-			}
 			elsif (can_transform( $col ))
-			{	#$logger->info("looking at $col: it's transform info") if $parent;
-				## data needs to be transformed in some way
+			{	## data needs to be transformed in some way
 				$gaf_line[ $gaf->{by_col}{$col} ] = transform($col,
 					id => $id,
 					errs => \$errs,
 					logger => $logger,
 					metadata => $metadata,
 					gpad_data => [ @gpad_line ],
-					gpi_data => [ @{$metadata->{by_id}{$id}} ],
 					ontology => $metadata->{ns_by_id},
 					parent => ($parent || ""),
 				) || '';
+				if ($parent && ($col =~ /gp_form/))
+				{	$logger->error("looking at $col for $id, parent $parent; result: " . ( $gaf_line[ $gaf->{by_col}{$col} ] || "blank" ) );
+				}
 			}
 			else
 			{	$logger->error("Don't know what to do with $col data!!");
@@ -246,7 +340,15 @@ sub process_gpad {
 		}
 
 		shift @gaf_line;
-		print GAF join("\t", @gaf_line) . "\n";
+		if ($errs->{line_err})
+		{	## terrible, unrecoverable error
+			delete $errs->{line_err};
+		}
+		else
+		{
+			print GAF join("\t", @gaf_line) . "\n";
+		}
+#		$logger->error("gaf line: " . join(", ", @gaf_line));
 	}
 
 	if ($errs)

@@ -61,7 +61,7 @@ my $extras = {
 };
 
 my $config = {
-	'galaxy' => join("\n", $basic, $stderr, $extras->{stderr_thresh}, $extras->{fatal}, $extras->{onemsg}),
+	'galaxy' => join("\n", $basic, $text, $extras->{text_thresh}, $extras->{fataltxt}, $extras->{onemsg}),
 	'verbose' => join("\n", $basic, $stderr, $stdout, $extras->{info}, $extras->{onemsg}),
 	'standard' => join("\n", $basic, $stderr, $stdout, $extras->{warn}, $extras->{onemsg}),
 	'debug' => join("\n", $basic, $stderr, $stdout, $extras->{debug}, $extras->{onemsg}),

@@ -1,6 +1,60 @@
 #!/usr/bin/perl
 # simple script to convert legacy GAF2.0 files into GPx format
 #
+#!/usr/bin/perl -w
+
+=head1 NAME
+
+gpx2gaf.pl
+
+=head1 SYNOPSIS
+
+ gpx2gaf.pl --gpad /path/to/gpad_file.gpad --gpi /path/to/gpi_file.gpi --ontology /path/to/ontology_file.obo --gaf /path/for/output_file.gaf
+
+=head1 DESCRIPTION
+
+Converts GPAD and GPI files into a GAF 2.0 file
+
+=head2 Input parameters
+
+=head3 Required
+
+=over
+
+=item -i | --input | --gaf /path/to/file_name
+
+input GAF output file
+
+=item --gpad /path/to/file_name
+
+output annotation file, GPAD format
+
+=item --gpi /path/to/file_name
+
+output gene product info file, GPI format
+
+=back
+
+=head3 Optional switches
+
+=over
+
+=item -l || --log
+
+Saves all errors to a log file; otherwise, errors are printed out to STDERR
+
+=item -h || --help
+
+This useful guide to what's going on!
+
+=item -v || --verbose
+
+prints various messages during the execution of the script
+
+=back
+
+=cut
+
 use strict;
 use warnings;
 use Data::Dumper;
@@ -86,16 +140,34 @@ sub process_gaf {
 		# tokenise line
 		chomp;
 		my @gaf_line = split("\t", $_);
+		## add sth to the beginning of the array so that the cols are correct
 		unshift @gaf_line, "";
-		my $id;
-		if (defined $gaf_line[ $gaf->{by_col}{gp_form_id} ] && $gaf_line[ $gaf->{by_col}{gp_form_id} ] =~ /\w/)
-		{	## this is a spliceform
-			my ($db, $key) = split(/:/, $gaf_line[ $gaf->{by_col}{gp_form_id} ], 2);
 
-			$metadata->{parent_gp_id}{ $gaf_line[ $gaf->{by_col}{gp_form_id} ] } = $gaf_line[ $gaf->{by_col}{db} ] . ":" . $gaf_line[ $gaf->{by_col}{db_object_id} ];
-			$id = $gaf_line[ $gaf->{by_col}{gp_form_id} ];
+		my $id;
+		my $parent;
+		if (defined $gaf_line[ $gaf->{by_col}{gp_object_form_id} ] && $gaf_line[ $gaf->{by_col}{gp_object_form_id} ] =~ /\w/)
+		{	## this is a spliceform
+			if ($gaf_line[ $gaf->{by_col}{gp_object_form_id} ] =~ /[\|;, ]/)
+			{	$logger->error("Found pipe in gp form id col " . $gaf_line[ $gaf->{by_col}{gp_object_form_id} ] . "! Skipping line.");
+				next;
+			}
+			my ($db, $key) = split(/:/, $gaf_line[ $gaf->{by_col}{gp_object_form_id} ], 2);
+			$parent = $gaf_line[ $gaf->{by_col}{db} ] . ":" . $gaf_line[ $gaf->{by_col}{db_object_id} ];
+
+			## store this info in terms of parent and child relations
+			$metadata->{parent_gp_id}{ $gaf_line[ $gaf->{by_col}{gp_object_form_id} ] }{$parent}++;
+			$metadata->{child_gp_id}{ $parent }{ $gaf_line[ $gaf->{by_col}{gp_object_form_id} ] }++;
+
+			$id = $gaf_line[ $gaf->{by_col}{gp_object_form_id} ];
 
 			$logger->info("$id: this is a spliceform!");
+
+			## do we want to save the data about the canon form?
+			## no data about the parent
+			if (! $metadata->{by_id}{$parent})
+			{	## save this line
+				@{$metadata->{parent_gaf_line}{$parent}} = map { $_ } @gaf_line;
+			}
 
 		}
 		else
@@ -103,15 +175,17 @@ sub process_gaf {
 		}
 
 		## process the GPI data
-		if (! $metadata->{by_id}{ $id })
+		if (! $metadata->{by_id}{ $id } )
 		{	#my @gpi_line = ( ('') x ((scalar keys %{$gpi->{by_col}}) + 1) );
-			my @gpi_line;
-#			$logger->info("getting GPI data for $id");
 
+			my @gpi_line;
+			my @parent_gpi_line;
+#			$logger->info("getting GPI data for $id");
 			foreach my $col (keys %{$gpi->{by_col}})
 			{	## do we have this data?
 				if ($gaf->{by_col}{ $col })
 				{	$gpi_line[ $gpi->{by_col}{ $col } ] = $gaf_line[ $gaf->{by_col}{ $col } ] || '';
+
 				}
 				elsif (can_transform($col))
 				{	## the data needs to be transformed
@@ -126,9 +200,7 @@ sub process_gaf {
 					$gpi_line[ $gpi->{by_col}{ $col } ] = '';
 				}
 			}
-			shift @gpi_line;
 			$metadata->{by_id}{$id} = \@gpi_line;
-#			$logger->info("$id gpi_line: " . join(", ", @gpi_line));
 		}
 
 		my @gpad_line;
@@ -157,18 +229,69 @@ sub process_gaf {
 		shift @gpad_line;
 		#$logger->info("gpad_line: " . join("]\t[", @gpad_line));
 
-		print GPAD join("\t", @gpad_line) . "\n";
+		if (! $errs->{line_err})
+		{	print GPAD join("\t", @gpad_line) . "\n";
+		}
+		else
+		{	delete $errs->{line_err};
+		}
+	}
+
+	close GAF;
+	close GPAD;
+
+	foreach my $child (keys %{$metadata->{parent_gp_id}})
+	{	if (scalar keys %{$metadata->{parent_gp_id}{$child}} > 1)
+		{	$logger->error("$child has " . (scalar keys %{$metadata->{parent_gp_id}{$child}}) . " parents!");
+			## should we go back and alter which parent is used?
+		}
 	}
 
 	# dump the gpi file
-	foreach my $id (sort keys %{$metadata->{by_id}}) {
-		my ($db, $key) = split(/:/, $id, 2);
-		print GPI join("\t", @{$metadata->{by_id}{$id}}) . "\n";
+	## check on the parent IDs. If we didn't get info on them, we should copy
+	## it from their children
+	foreach my $parent (keys %{$metadata->{child_gp_id}})
+	{	if (! $metadata->{by_id}{$parent})
+		{	## create the data from the saved GAF line
+			if (! $metadata->{parent_gaf_line}{$parent})
+			{	$logger->error("No info for $parent! This should not have happened!");
+				next;
+			}
+
+			my @parent_gaf_line;
+			my @parent_gpi_line;
+			foreach (@{$metadata->{parent_gaf_line}{$parent}})
+			{	push @parent_gaf_line, $_;
+			}
+			$parent_gaf_line[ $gaf->{by_col}{gp_object_form_id} ] = '';
+
+			foreach my $col (keys %{$gpi->{by_col}})
+			{	## do we have this data?
+				if ($gaf->{by_col}{ $col })
+				{	$parent_gpi_line[ $gpi->{by_col}{ $col } ] = $parent_gaf_line[ $gaf->{by_col}{ $col } ] || '';
+				}
+				elsif (can_transform($col))
+				{	## the data needs to be transformed
+					$parent_gpi_line[ $gpi->{by_col}{ $col } ] = transform( $col,
+						id => $parent,
+						errs => \$errs,
+						gaf_data => [ @parent_gaf_line ],
+					) || '';
+				}
+				else
+				{	$errs->{gaf}{unknown_gpi_col}{$col}++;
+					$parent_gpi_line[ $gpi->{by_col}{ $col } ] = '';
+				}
+			}
+			$metadata->{by_id}{ $parent } = \@parent_gpi_line;
+		}
+	}
+
+	foreach my $id (sort keys %{$metadata->{by_id}})
+	{	print GPI join("\t", @{$metadata->{by_id}{$id}}[1..$#{$metadata->{by_id}{$id}}]) . "\n";
 	}
 
 	# our work here is done...
-	close GAF;
-	close GPAD;
 	close GPI;
 
 	if ($errs)
@@ -224,6 +347,8 @@ sub parse_options {
 
 	return check_options($opt, $errs);
 }
+
+
 
 
 # process the input params

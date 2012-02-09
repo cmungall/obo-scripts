@@ -9,8 +9,8 @@ our @EXPORT = qw(get_file_format get_gpi_spec get_gaf_spec get_gpad_spec transfo
 =head2 GPI fields
 
 Content	 Required?	 Cardinality	 Example
-DB	 required	 1	 UniProtKB
-DB Object ID	 required	 1	 P12345
+DB GP Form	 required	 1	 UniProtKB (database from which GP form comes)
+DB GP Form ID	 required	 1	 P12345 (can be spliceform)
 DB Object Symbol	 required	 1	 PHO3
 DB Object Name	 optional	 0 or 1	 Toll-like receptor 4
 DB Object Synonym	 optional	 0+, pipe-separated	 hToll|Tollbooth
@@ -27,23 +27,23 @@ my $gpi = {
 		minor => '.0',
 	},
 	by_col => {
-		db => 1,
-		db_gp_form_id => 2,
-		db_object_symbol => 3,
-		db_object_name => 4,
-		db_object_synonym => 5,
-		db_object_type => 6,
+		gp_form_db => 1,
+		gp_form_id => 2,
+		gp_form_symbol => 3,
+		gp_form_name => 4,
+		gp_form_synonym => 5,
+		gp_form_type => 6,
 		taxon => 7,
 		parent_gp_id => 8,
 		gp_xrefs => 9,
 	},
 	in_order => [
-	qw( db
-		db_gp_form_id
-		db_object_symbol
-		db_object_name
-		db_object_synonym
-		db_object_type
+	qw( gp_form_db
+		gp_form_id
+		gp_form_symbol
+		gp_form_name
+		gp_form_synonym
+		gp_form_type
 		taxon
 		parent_gp_id
 		gp_xrefs )
@@ -57,8 +57,8 @@ sub get_gpi_spec {
 =head2 GPAD fields
 
 Content	 Required?	 Cardinality	 Example
-DB	 required	 1	 UniProtKB
-DB Object ID	 required	 1	 P12345
+DB GP Form	 required	 1	 UniProtKB (database from which GP form comes)
+DB GP Form ID	 required	 1	 P12345 (can be spliceform)
 Relationship	 required	 1	NOT part of
 GO ID	 required	 1	 GO:0003993
 Reference(s)	 required	 1 or greater	 PMID:2676709
@@ -76,8 +76,8 @@ my $gpad = {
 		minor => '.0',
 	},
 	by_col => {
-		db => 1,
-		db_gp_form_id => 2,
+		gp_form_db => 1,
+		gp_form_id => 2,
 		relationship => 3,
 		go_id => 4,
 		reference => 5,
@@ -89,8 +89,8 @@ my $gpad = {
 		annotation_xp => 11,
 	},
 	in_order => [
-	qw( db
-		db_gp_form_id
+	qw( gp_form_db
+		gp_form_id
 		relationship
 		go_id
 		reference
@@ -152,7 +152,7 @@ my $gaf = {
 		date => 14,
 		assigned_by => 15,
 		annotation_xp => 16,
-		gp_form_id => 17,
+		gp_object_form_id => 17,
 	},
 	in_order => [
 	qw( db
@@ -171,7 +171,7 @@ my $gaf = {
 		date
 		assigned_by
 		annotation_xp
-		gp_form_id )
+		gp_object_form_id )
 	],
 };
 
@@ -237,6 +237,7 @@ my $rln2qual = {
 	contributes_to => 'contributes_to',
 	colocalizes_with => 'colocalizes_with',
 	'not' => 'NOT',
+	'NOT' => 'NOT',
 };
 
 # hash that maps GO evidence codes to (reference-specific) ECO identifiers
@@ -329,10 +330,14 @@ my $transforms = {
 		my %args = (@_);
 		## concatenate gpi taxon and gpad int_taxon
 		if ($args{gpad_data}->[ $gpad->{by_col}{interacting_taxon} ] ne "")
-		{	return join('|', map { "taxon:$_" } ($args{gpi_data}->[ $gpi->{by_col}{taxon} ], $args{gpad_data}->[ $gpad->{by_col}{interacting_taxon} ]) );
+		{	return join('|', map { "taxon:$_" } ($args{metadata}->{by_id}{$args{id}}[ $gpi->{by_col}{taxon} ], $args{gpad_data}->[ $gpad->{by_col}{interacting_taxon} ]) );
 		}
 		else
-		{	return "taxon:" . $args{gpi_data}->[ $gpi->{by_col}{taxon} ];
+		{	#if (! $args{metadata}->{by_id}{$args{id}}[ $gpi->{by_col}{taxon} ])
+			#{
+			#	print STDERR "gpi data for id $args{id}: " . Dumper($args{metadata}->{by_id}{$args{id}});
+			#}
+			return "taxon:" . $args{metadata}->{by_id}{$args{id}}[ $gpi->{by_col}{taxon} ];
 		}
 	},
 	'aspect' => sub {
@@ -356,6 +361,7 @@ my $transforms = {
 		}
 		else
 		{	${$args{errs}}->{gpad}{no_ev_code}{ $args{gpad_data}->[ $gpad->{by_col}{eco_id} ]}++;
+			${$args{errs}}->{line_err}++;
 			return "";
 		}
 	},
@@ -368,6 +374,13 @@ my $transforms = {
 		{	if ($rln2qual->{$_})
 			{	push @$qual, $rln2qual->{$_};
 			}
+			else
+			{	if ($_ ne 'actively_participates_in' && $_ ne 'part_of')
+				{	print STDERR "Could not find rln2qual data for $_!\n";
+					${$args{errs}}->{line_err}++;
+					${$args{errs}}->{gpad}{unknown_qual}{$_}++;
+				}
+			}
 		}
 
 		if ($qual && @$qual)
@@ -375,13 +388,23 @@ my $transforms = {
 		}
 		return '';
 	},
-	'gp_form_id' => sub {
+	'db' => sub {
 		my %args = (@_);
+		##
+		my ($db, $ref);
 		if ($args{parent} =~ /\w/)
-		{	## return the child ID
-			return $args{id};
+		{	## put in the parent id
+			($db, $ref) = split /:/, $args{parent}, 2;
 		}
-		return;
+		else
+		{	#if (! $args{metadata}->{by_id}{ $args{id} }[ $gpi->{by_col}{gp_form_db} ])
+			#{
+			#	print STDERR "gpi data for id $args{id}: " . Dumper($args{metadata}->{by_id}{ $args{id} });
+			#}
+
+			($db, $ref) = split /:/, $args{metadata}->{by_id}{ $args{id} }[ $gpi->{by_col}{gp_form_db} ], 2;
+		}
+		return $db;
 	},
 	'db_object_id' => sub {
 		my %args = (@_);
@@ -392,17 +415,114 @@ my $transforms = {
 			return $ref;
 		}
 		else
-		{	return $args{gpi_data}->[ $gpi->{by_col}{db_gp_form_id} ];
+		{	return $args{metadata}->{by_id}{ $args{id} }->[ $gpi->{by_col}{gp_form_id} ];
 		}
+	},
+	'gp_object_form_id' => sub {
+		my %args = (@_);
+		if ($args{parent} =~ /\w/)
+		{	## return the child ID
+			return $args{id};
+		}
+		return;
+	},
+	'db_object_symbol' => sub {
+		my %args = (@_);
+		if ($args{parent} =~ /\w/)
+		{	## use the parent data
+			if ($args{metadata}->{by_id}{$args{parent}})
+			{	return $args{metadata}->{by_id}{$args{parent}}[ $gpi->{by_col}{gp_form_symbol} ] || '';
+			}
+		}
+		return $args{metadata}->{by_id}{$args{id}}[ $gpi->{by_col}{gp_form_symbol} ] || '';
+	},
+	'db_object_name' => sub {
+		my %args = (@_);
+		if ($args{parent} =~ /\w/)
+		{	## use the parent data
+			if ($args{metadata}->{by_id}{$args{parent}})
+			{	return $args{metadata}->{by_id}{$args{parent}}[ $gpi->{by_col}{gp_form_name} ] || '';
+			}
+		}
+		return $args{metadata}->{by_id}{$args{id}}[ $gpi->{by_col}{gp_form_name} ] || '';
+	},
+	'db_object_synonym' => sub {
+		my %args = (@_);
+		if ($args{parent} =~ /\w/)
+		{	## use the parent data
+			if ($args{metadata}->{by_id}{$args{parent}})
+			{	return $args{metadata}->{by_id}{$args{parent}}[ $gpi->{by_col}{gp_form_synonym} ] || '';
+			}
+		}
+		return $args{metadata}->{by_id}{$args{id}}[ $gpi->{by_col}{gp_form_synonym} ] || '';
+	},
+	'db_object_type' => sub {
+		my %args = (@_);
+		if ($args{parent} =~ /\w/)
+		{	## use the parent data
+			if ($args{metadata}->{by_id}{$args{parent}})
+			{	return $args{metadata}->{by_id}{$args{parent}}[ $gpi->{by_col}{gp_form_type} ] || '';
+			}
+		}
+		return $args{metadata}->{by_id}{$args{id}}[ $gpi->{by_col}{gp_form_type} ] || '';
 	},
 
 	## GAF => GPAD + GPI
+	'gp_form_db' => sub {
+		my %args = (@_);
+		if ($args{gaf_data}->[ $gaf->{by_col}{gp_object_form_id} ])
+		{	## remove the db, return
+			my ($db, $key) = split /:/, $args{gaf_data}->[ $gaf->{by_col}{gp_object_form_id} ], 2;
+			return $db;
+		}
+		return $args{gaf_data}->[ $gaf->{by_col}{db} ];
+	},
+	'gp_form_id' => sub {
+		my %args = (@_);
+		if ($args{gaf_data}->[ $gaf->{by_col}{gp_object_form_id} ])
+		{	## remove the db, return
+			my ($db, $key) = split /:/, $args{gaf_data}->[ $gaf->{by_col}{gp_object_form_id} ], 2;
+			if ($key)
+			{	return $key;
+			}
+		}
+		return $args{gaf_data}->[ $gaf->{by_col}{db_object_id} ];
+	},
+	## GPI specific
+	'gp_xrefs' => sub {
+		return '';
+	},
+	'gp_form_symbol' => sub {
+		my %args = (@_);
+		return $args{gaf_data}->[ $gaf->{by_col}{db_object_symbol} ] || '';
+	},
+	'gp_form_name' => sub {
+		my %args = (@_);
+		return $args{gaf_data}->[ $gaf->{by_col}{db_object_name} ] || '';
+	},
+	'gp_form_synonym' => sub {
+		my %args = (@_);
+		return $args{gaf_data}->[ $gaf->{by_col}{db_object_synonym} ] || '';
+	},
+	'gp_form_type' => sub {
+		my %args = (@_);
+		return $args{gaf_data}->[ $gaf->{by_col}{db_object_type} ] || '';
+	},
 	'taxon' => sub {
 		my %args = (@_);
 		## split up the taxon and interacting taxon
 		my @taxa = map { s/taxon://g; $_ } split(/\|/, $args{gaf_data}->[ $gaf->{by_col}{taxon_int_taxon} ]);
 		return $taxa[0];
 	},
+	'parent_gp_id' => sub {
+		my %args = (@_);
+		if ($args{gaf_data}->[ $gaf->{by_col}{gp_object_form_id} ])
+		{	## this is a spliceform
+			return $args{gaf_data}->[ $gaf->{by_col}{db} ] .":". $args{gaf_data}->[ $gaf->{by_col}{db_object_id} ];
+		}
+		return '';
+	},
+	## GPAD specific
 	'interacting_taxon' => sub {
 		my %args = (@_);
 		## split up the taxon and interacting taxon
@@ -420,6 +540,7 @@ my $transforms = {
 		}
 		else
 		{	${$args{errs}}->{gaf}{no_eco_id}{$ev}++;
+			${$args{errs}}->{line_err}++;
 			return '';
 		}
 	},
@@ -436,7 +557,6 @@ my $transforms = {
 				}
 			}
 		}
-
 		## get the term aspect and add the relationship
 		if (! $aspect2rln->{ $args{gaf_data}->[ $gaf->{by_col}{aspect} ] })
 		{	${$args{errs}}->{gaf}{invalid_aspect}{ $gaf->{by_col}{aspect} }++;
@@ -446,25 +566,6 @@ my $transforms = {
 		{	push @rlns, $aspect2rln->{ $args{gaf_data}->[ $gaf->{by_col}{aspect} ] };
 		}
 		return join('|', @rlns);
-	},
-	'parent_gp_id' => sub {
-		my %args = (@_);
-		if ($args{gaf_data}->[ $gaf->{by_col}{gp_form_id} ])
-		{	## this is a spliceform
-			return $args{gaf_data}->[ $gaf->{by_col}{db} ].":".$args{gaf_data}->[ $gaf->{by_col}{db_object_id} ];
-		}
-		return '';
-	},
-	'db_gp_form_id' => sub {
-		my %args = (@_);
-		if ($args{gaf_data}->[ $gaf->{by_col}{gp_form_id} ])
-		{	## remove the db, return
-			my ($db, $key) = split /:/, $args{gaf_data}->[ $gaf->{by_col}{gp_form_id} ], 2;
-			if ($key)
-			{	return $key;
-			}
-		}
-		return $args{gaf_data}->[ $gaf->{by_col}{db_object_id} ];
 	},
 };
 
@@ -482,7 +583,6 @@ sub can_transform {
 	return 1 if $transforms->{$tfm};
 	return;
 }
-
 
 ##	write_errors( errs => $errs, options => $opt, logger => $logger );
 
@@ -510,6 +610,9 @@ sub write_errors {
 			elsif ($key eq 'invalid_aspect')
 			{	$msg .= "Invalid aspect found in GAF file:\n" . join(", ", sort keys %{$errs->{gaf}{invalid_aspect}} ) . "\n\n";
 			}
+			elsif ($key eq 'too_many_children')
+			{	$msg .= "Parent GP was not in GAF and more than one child was found; did not know where to get the GP info from. Affects:\n" . join(", ", sort keys %{$errs->{gaf}{too_many_children}} ) . "\n\n";
+			}
 			else
 			{	$msg .= "Unexplained error of type $key found\n\n";
 			}
@@ -523,6 +626,9 @@ sub write_errors {
 		foreach my $key (keys %{$errs->{gpi}})
 		{	if ($key eq 'too_many_parents')
 			{	$msg .= "More than one parent_gp_id found; most common parent ID used. Affects:\n" . join(", ", sort keys %{$errs->{gpi}{too_many_parents}} ) . "\n\n";
+			}
+			elsif ($key eq 'no_metadata')
+			{	$msg .= "No metadata found for parent_gp_id; affects:\n" . join(", ", sort keys %{$errs->{gpi}{no_metadata}}) . "\n\n";
 			}
 			else
 			{	$msg .= "Unexplained error of type $key found\n\n";
@@ -542,6 +648,9 @@ sub write_errors {
 			}
 			elsif ($key eq 'no_ev_code')
 			{	$msg .= "No mapping for the following ECO IDs:\n" . join(", ", sort keys %{$errs->{gpad}{no_ev_code}} ) . "\n\n";
+			}
+			elsif ($key eq 'unknown_qual')
+			{	$msg .= "No mapping for the following qualifiers:\n" . join(", ", sort keys %{$errs->{gpad}{no_ev_code}} ) . "\n\n";
 			}
 			else
 			{	$msg .= "Unexplained error of type $key found\n\n";
