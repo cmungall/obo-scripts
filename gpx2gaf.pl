@@ -1,228 +1,522 @@
-#!/sw/arch/bin/perl
-# simple script to convert GPx files into GAF 2.0 format
-# note that this may result in data loss, as not everything that can represented in GPx format can be represented in GAF 2.0 format
-#
-# gpa columns:
-#   # name                   required? cardinality   GAF column
-#   1 DB                     required  1              1
-#   2 DB_Object_ID           required  1              2
-#   3 Qualifier              optional  0 or greater   4
-#   4 Relation               required  1 or greater   -
-#   5 GO ID                  required  1              5
-#   6 DB:Reference(s)        required  1 or greater   6
-#   7 Evidence code          required  1              7
-#   8 With                   optional  0 or greater   8
-#   9 Interacting taxon ID   optional  0 or 1        13
-#  10 Date                   required  1             14
-#  11 Assigned_by            required  1             15
-#  12 Annotation Extension   optional  0 or greater  16
-#  13 Spliceform ID          optional  0 or 1        17
-#
-# gpi columns:
-#   # name                   required? cardinality   GAF column
-#   1 DB                     required  1              1
-#   2 DB_Subset              optional  0 or 1         -
-#   3 DB_Object_ID           required  1              2
-#   4 DB_Object_Symbol       required  1              3
-#   5 DB_Object_Name         optional  0 or 1        10
-#   6 DB_Object_Synonym(s)   optional  0 or greater  11
-#   7 DB_Object_Type         required  1             12
-#   8 Taxon                  required  1             13
-#   9 Annotation_Target_Set  optional  0 or greater   -
-#  10 Annotation_Completed   optional  1              -
-#  11 Parent_Object_ID       optional  0 or 1         -
-#
+#!/usr/bin/perl -w
+
+=head1 NAME
+
+gpx2gaf.pl
+
+=head1 SYNOPSIS
+
+ gpx2gaf.pl --gpad /path/to/gpad_file.gpad --gpi /path/to/gpi_file.gpi --ontology /path/to/ontology_file.obo --gaf /path/for/output_file.gaf
+
+=head1 DESCRIPTION
+
+Converts GPAD and GPI files into a GAF 2.0 file
+
+=head2 Input parameters
+
+=head3 Required
+
+=over
+
+=item --gpad /path/to/file_name
+
+input annotation file, GPAD format
+
+=item --gpi /path/to/file_name
+
+input gene product info file, GPI format
+
+=item -ont | --ontology /path/to/file_name
+
+input ontology file, OBO format; required to get namespace for terms
+
+=item -o | --gaf | --output /path/to/file_name
+
+the proposed GAF output file
+
+=back
+
+=head3 Optional switches
+
+=over
+
+=item -l || --log
+
+Saves all errors to a log file; otherwise, errors are printed out to STDERR
+
+=item -h || --help
+
+This useful guide to what's going on!
+
+=item -v || --verbose
+
+prints various messages during the execution of the script
+
+=back
+
+=cut
+
 use strict;
 use warnings;
+use Data::Dumper;
 
-# hash that maps ECO identifiers to GO evidence codes
-my %eco2ev = (
-	'ECO:0000314' => 'IDA',
-	'ECO:0000316' => 'IGI',
-	'ECO:0000315' => 'IMP',
-	'ECO:0000021' => 'IPI',
-	'ECO:0000031' => 'ISS',
-	'ECO:0000084' => 'IGC',
-	'ECO:0000317' => 'IGC',
-	'ECO:0000203' => 'IEA',
-	'ECO:0000319' => 'IBD',
-	'ECO:0000321' => 'IRD',
-	'ECO:0000320' => 'IKR',
-	'ECO:0000245' => 'RCA',
-	'ECO:0000247' => 'ISA',
-	'ECO:0000250' => 'ISS',
-	'ECO:0000255' => 'ISM',
-	'ECO:0000256' => 'IEA',
-	'ECO:0000265' => 'IEA',
-	'ECO:0000266' => 'ISO',
-	'ECO:0000269' => 'EXP',
-	'ECO:0000270' => 'IEP',
-	'ECO:0000303' => 'NAS',
-	'ECO:0000304' => 'TAS',
-	'ECO:0000305' => 'IC',
-	'ECO:0000307' => 'ND',
-	'ECO:0000318' => 'IBA',
-);
+my $bin_dir;
+my $dist_dir;
 
-# hash that maps relation to ontology and (where appropriate) the GAF 2.0 equivalent
-my %relations = (
-# cellular_component
-	part_of => { aspect => 'C', gaf_equivalent => '' },
-	colocalizes_with => { aspect => 'C', gaf_equivalent => 'colocalizes_with' },
-	active_in => { aspect => 'C' },
-	transported_by => { aspect => 'C' },
-	posttranslationally_modified_in => { aspect => 'C' },
-	located_in_other_organism => { aspect => 'C' },
-	located_in_host => { aspect => 'C' },
-	member_of => { aspect => 'C' },
-	intrinsic_to => { aspect => 'C' },
-	extrinsic_to => { aspect => 'C' },
-	spans => { aspect => 'C' },
-	partially_spans => { aspect => 'C' },
-# molecular_function
-	actively_participates_in => { aspect => 'F',  gaf_equivalent => '' },
-	contributes_to => { aspect => 'F', gaf_equivalent => 'contributes_to' },
-	functions_in_other_organism => { aspect => 'F' },
-	functions_in_host => { aspect => 'F' },
-	substrate_of => { aspect => 'F' },
-# biological_process
-	participates_in => { aspect => 'P', gaf_equivalent => '' }
-);
+BEGIN {
+	use Cwd;
+	use File::Basename;
+	$bin_dir = dirname(__FILE__);
+	$bin_dir = Cwd::abs_path($bin_dir);
+	($dist_dir = $bin_dir) =~ s/bin\/?$//;
+}
 
-sub get_file_format {
-	my $f = shift;
-	my ($format, $major, $minor);
-	
-	open (F, "<$f") or die "Unable to open $f for reading; aborting.\n";
-	# loop until we find the first non-blank, non-comment line or a file format tag
-	while (<F>) {
-		chomp;
-		if (/!\s*(gaf|gpa|gpi)-version:\s*((\d)(\.(\d))?)/) {
-			$format = $1;
-			$major = $3;
-			$minor = $5;
-			last;
-		}
-		last if ($_ ne '' && !/^!/);
+use lib ($dist_dir, $bin_dir);
+
+use GOBO::Logger;
+use GOBO::AnnotationFormats qw(get_file_format get_gaf_spec get_gpi_spec get_gpad_spec transform can_transform write_errors);
+
+my $logger;
+my $metadata;
+
+my $gaf = get_gaf_spec();
+my $gpi = get_gpi_spec();
+my $gpad = get_gpad_spec();
+
+run_script(\@ARGV);
+
+exit(0);
+
+sub run_script {
+
+	my $options = parse_options(@_);
+	$logger->info("Parsed options. Starting script!");
+
+	## initialise the log file if we're using one.
+	if ($options->{'log'})
+	{	open (my $log_fh, "> " . $options->{'log'}) or $logger->logdie("Unable to open " . $options->{gpi} . ": $!");
+		$options->{log_fh} = $log_fh;
 	}
-	close F;
-	return ($format, $major, $minor);
+
+	## pull in the GPI data
+	read_gpi($options);
+
+	## pull in the ontology data
+	read_ontology($options);
+
+	## process 'n' print!
+	process_gpad($options);
+
 }
 
 sub read_gpi {
-	my $gpi = shift;
-	my %metadata;
+	my $opt = shift;
 
-	open (GPI, "<$gpi") or die "Unable to open $gpi for reading; aborting.\n";
-
+	open (GPI, "<" . $opt->{gpi}) or $logger->logdie("Unable to open " . $opt->{gpi} ." for reading: $!");
 	while(<GPI>) {
+		next unless /\w/;
+		next if /^!/;
 		chomp;
-		next if (/^!/ || ($_ eq ''));
 
-		my ($db, $db_subset, $db_object_id, $db_object_symbol, $db_object_name, $db_object_synonym, $db_object_type, $taxon, $annotation_target_set, $annotation_completed, $parent_object_id) = split(/\t/, $_);
-		# stash away only those attributes that are supported by the GAF 2.0 format
-		$metadata{"$db:$db_object_id"} = [$db, $db_object_id, $db_object_symbol, $db_object_name, $db_object_synonym, $db_object_type, $taxon];
+		## check whether it's an MGI ID or not
+		my $iso;
+		if ($_ !~ /^MGI/)
+		{	$iso++;
+		}
+
+		my @gpi_line = split(/\t/, $_);
+		unshift @gpi_line, "";
+
+		if (! $gpi_line[ $gpi->{by_col}{gp_form_db} ] )
+		{	$logger->error("No value for db gp form:\n" . @gpi_line);
+		}
+		if (! $gpi_line[ $gpi->{by_col}{gp_form_id} ] )
+		{	$logger->error("No value for db gp form id:\n" . @gpi_line);
+		}
+
+		## does this GP have a parent GP?
+		if (defined $gpi_line[ $gpi->{by_col}{parent_gp_id} ])
+		{
+			$metadata->{parent}{ $gpi_line[ $gpi->{by_col}{gp_form_db} ] . ":" . $gpi_line[ $gpi->{by_col}{gp_form_id} ] }{$gpi_line[ $gpi->{by_col}{parent_gp_id} ]}++;
+
+			$metadata->{child}{$gpi_line[ $gpi->{by_col}{parent_gp_id} ]}{ $gpi_line[ $gpi->{by_col}{gp_form_db} ] . ":" . $gpi_line[ $gpi->{by_col}{gp_form_id} ] }++;
+
+			$metadata->{all_ids}{$gpi_line[ $gpi->{by_col}{parent_gp_id} ]}++;
+		}
+		else
+		{	if ($iso)
+			{	$logger->error("No parent for isoform " . $gpi_line[ $gpi->{by_col}{gp_form_db} ] . ":" . $gpi_line[ $gpi->{by_col}{gp_form_id} ]);
+			}
+		}
+
+		$metadata->{by_id}{ $gpi_line[ $gpi->{by_col}{gp_form_db} ] . ":" . $gpi_line[ $gpi->{by_col}{gp_form_id} ] } = [ @gpi_line ];
+
+		$metadata->{all_ids}{ $gpi_line[ $gpi->{by_col}{gp_form_db} ] . ":" . $gpi_line[ $gpi->{by_col}{gp_form_id} ] }++;
+
+
 	}
 	close GPI;
-	return \%metadata;
+
+#	$logger->error("parent hash: " . Dumper($metadata->{parent}));
+
+	foreach my $id (keys %{$metadata->{all_ids}})
+	{	if (! $metadata->{by_id}{$id} || scalar @{$metadata->{by_id}{$id}} < 1)
+		{	$logger->error("No metadata for $id!");
+		}
+	}
+
+	my $errs;
+	## check that there is only one parent for each spliceform
+	if ($metadata->{parent} && keys %{$metadata->{parent}})
+	{	foreach my $i (keys %{$metadata->{parent}})
+		{	my @pars = sort { $metadata->{parent}{$i}{$b} <=> $metadata->{parent}{$i}{$a} } keys %{$metadata->{parent}{$i}};
+			if (scalar @pars > 1)
+			{	$errs->{gpi}{too_many_parents}{$i}++;
+			}
+			$metadata->{parent}{$i} = $pars[0];
+		}
+	}
+
 }
 
-sub process_gpa {
-	my ($gpa, $metadata) = @_;
-	my $suffix = ($gpa =~ /gp_association\.(.+)/) ? $1 : "generic_suffix";
+sub read_ontology {
+	my $opt = shift;
+
+	my $errs;
+	open (FH, "<" . $opt->{ontology}) or $logger->logdie("Unable to open " . $opt->{ontology} . " for reading: $!");
+	{	local $/ = "\n[";
+		while(<FH>)
+		{	if (/^Term]/)
+			{	next if /is_obsolete: true/m;
+				my $id;
+				## get the id and namespace
+				if (/^id: (GO:\d+)$/m)
+				{	$id = $1;
+					if (/^namespace: (\w+)$/m)
+					{	if ($1 eq 'biological_process')
+						{	$metadata->{ns_by_id}{$id} = 'P';
+						}
+						elsif ($1 eq 'molecular_function')
+						{	$metadata->{ns_by_id}{$id} = 'F';
+						}
+						elsif ($1 eq 'cellular_component')
+						{	$metadata->{ns_by_id}{$id} = 'C';
+						}
+						else
+						{	push @{$errs->{ont}{invalid_ns}{$1}}, $id;
+						}
+					}
+					else
+					{	push @{$errs->{ont}{no_ns}}, $id;
+					}
+				}
+				else
+				{	push @{$errs->{ont}{no_id}}, $_;
+				}
+			}
+		}
+	}
+	close(FH);
+
+	## make sure we got SOME data!
+	if (! $metadata->{ns_by_id} || (scalar keys %{$metadata->{ns_by_id}}) == 0)
+	{	$logger->logdie("No ontology namespace data found: please check the ontology file and rerun the script.");
+	}
+	if ($errs && keys %$errs)
+	{
+	}
+}
+
+sub process_gpad {
+	my $opt = shift;
+#	my $suffix = ($opt->{gpad} =~ /gp_association\.(.+)/) ? $1 : "txt";
 
 	my ($sec, $min, $hour, $day, $month, $year) = (localtime)[0, 1, 2, 3, 4, 5];
 	my $timestamp = sprintf("%04d-%02d-%02d %02d:%02d:%02d", $year + 1900, $month + 1, $day, $hour, $min, $sec);
 
 	# open all files
-	open (GPA, "<$gpa") or die "Unable to open $gpa for reading; aborting.\n";
+	open (GPAD, "<" . $opt->{gpad}) or $logger->logdie("Unable to open " . $opt->{gpad} . " for reading: $!");
 
-	my $gaf = "gene_association.$suffix";
-	open (GAF, ">$gaf") or die "Unable to open $gaf for writing; aborting.\n";
-	print GAF "!gaf-version: 2.0\n";
-	print GAF "!file generated at $timestamp from $gpa\n!\n";
+	open (GAF, ">" . $opt->{gaf}) or $logger->logdie("Unable to open " . $opt->{gaf} . " for writing: $!");
 
-	my $log = "gpx2gaf_log.$suffix";
-	open (LOG, ">$log") or die "Unable to open $log for writing; aborting.\n";
+	print GAF "!gaf-version: " . $gaf->{version}{major} . $gaf->{version}{minor} ."\n"
+	. "!file generated at $timestamp from " . $opt->{gpad} . " by " . scr_name() . "\n"
+	. "!\n";
 
+#	my $log = "gpx2gaf_log.$suffix";
+#	open (LOG, ">" . $opt->{log} ) or $logger->logdie("Unable to open " . $opt->{log} . " for writing: $!");
+
+	my $errs;
 	my $line_number = 0;
-	while (<GPA>) {
+	while (<GPAD>) {
 		$line_number++;
-
+		next unless /\w/;
 		if (/^!/) {
 			# ignore the file format tag
-			next if (/^!\s*gpa-version:\s*((\d)(\.(\d))?)/);
-
+			next if /^!\s*gpad-version:\s*((\d)(\.(\d))?)/;
+			next if /generated at .*? by /;
 			# pass all other comments through unchanged
 			print GAF;
 			next;
-		};
+		}
 
 		# tokenise line
 		chomp;
-		next if ($_ eq '');
-		my ($db, $db_object_id, $qualifier, $relation, $go_id, $reference, $evidence_code, $with, $interacting_taxon, $date, $assigned_by, $annotation_extension, $spliceform_id) = split(/\t/, $_);
+		my @gpad_line = split(/\t/, $_);
+		unshift @gpad_line, "";
+		my $id = $gpad_line[ $gpad->{by_col}{gp_form_db} ] . ":" . $gpad_line[  $gpad->{by_col}{gp_form_id} ];
+		my @gaf_line;
 
 		# get the appropriate set of metadata
-		my $key = (defined($spliceform_id) && $spliceform_id ne '') ? $spliceform_id : "$db:$db_object_id";
-		if (!defined($metadata->{$key})) {
-			print LOG "$gpa ($line_number): metadata not found for $key\n";
-			next;
-		}
-		my @md = @{$metadata->{$key}}; # $md[0] = db, $md[1] = db_object_id, $md[2] = db_object_symbol, $md[3] = db_object_name, $md[4] = db_object_synonym, $md[5] = db_object_type, $md[6] = taxon
+		# check if this is a spliceform
+		my $parent;
+		if ($metadata->{parent} && $metadata->{parent}{$id})
+		{	$parent = $metadata->{parent}{$id};
+			## do we already have this info stored?
+			if (! $metadata->{by_child_id}{$id})
+			{
+				## find the ultimate parent for the $id
+				while ( defined $metadata->{parent}{$parent} )
+				{	$parent = $metadata->{parent}{$parent};
+				}
+			#	$logger->error("found parent $parent for $id!");
+				if ($metadata->{by_id}{$parent} && scalar @{$metadata->{by_id}{$parent}} < 1)
+				{	$logger->error("Don't have much metadata for $parent! :(");
+				}
 
-		# translate ECO id to GO evidence code
-		my $ev = $eco2ev{$evidence_code};
-		if (!defined($ev)) {
-			print LOG "$gpa ($line_number): unsupported/unrecognised evidence code ($evidence_code)\n";
-			next;
-		}
-
-		# deal with qualifier, relation and aspect
-		my ($aspect, $qual);
-		foreach my $rel (keys %relations) {
-			if ($relation =~ /^$rel$/) {
-				$aspect = $relations{$rel}{aspect};
-				$qual = $relations{$rel}{gaf_equivalent};
-				last;
+				## check that we have the metadata for the parent
+				if (! $metadata->{by_id}{$parent})
+				{	#print LOG "$gpad ($line_number): metadata not found for $id\n";
+					$errs->{gpi}{no_metadata}{$parent}++;
+					$logger->error("$line_number: metadata not found for parent $parent of $id");
+					# we'll have to just use the metadata from the spliceform
+				}
+				else
+				{	## otherwise, store the metadata for ease of access
+					## db_object_type should be preserved
+					## id goes to gp_object_form_id
+					$metadata->{by_child_id}{$id} = [ @{$metadata->{by_id}{ $parent }} ];
+				}
 			}
 		}
-		if (!defined($aspect)) {
-			print LOG "$gpa ($line_number): unsupported/unrecognised relation ($relation)\n";
-			next;
-		}
-		if (!defined($qual)) {
-			print LOG "$gpa ($line_number): relation not supported in GAF 2.0 format ($relation)\n";
-			next;
+
+		## gather the data to put into @new_line
+		foreach my $col (keys %{$gaf->{by_col}})
+		{	## is this GPAD data?
+			if ($gpad->{by_col}{ $col })
+			{	#$logger->info("looking at $col: it's GPAD info") if $parent;
+				## copy the data from the gpad line
+				$gaf_line[ $gaf->{by_col}{$col} ] = $gpad_line[ $gpad->{by_col}{$col} ] || "";
+			}
+			elsif ($gpi->{by_col}{ $col })
+			{	## copy the data from metadata->{by_id}{$id}[ $gpi->{by_col}{$col} ]
+				$gaf_line[ $gaf->{by_col}{$col} ] =
+				## if this is a spliceform
+				$metadata->{by_child_id}{$id}[ $gpi->{by_col}{$col} ] ||
+				## this is just a standard thing
+				$metadata->{by_id}{$id}[ $gpi->{by_col}{$col} ] ||
+				## no value
+				"";
+			}
+			elsif (can_transform( $col ))
+			{	## data needs to be transformed in some way
+				$gaf_line[ $gaf->{by_col}{$col} ] = transform($col,
+					id => $id,
+					errs => \$errs,
+					logger => $logger,
+					metadata => $metadata,
+					gpad_data => [ @gpad_line ],
+					ontology => $metadata->{ns_by_id},
+					parent => ($parent || ""),
+				) || '';
+				if ($parent && ($col =~ /gp_form/))
+				{	$logger->error("looking at $col for $id, parent $parent; result: " . ( $gaf_line[ $gaf->{by_col}{$col} ] || "blank" ) );
+				}
+			}
+			else
+			{	$logger->error("Don't know what to do with $col data!!");
+				$gaf_line[ $gaf->{by_col}{$col} ] = '';
+			}
 		}
 
-		if ($qualifier eq 'NOT') {
-			$qual = ($qual eq '') ? $qualifier : "$qualifier|$qual";
+		shift @gaf_line;
+		if ($errs->{line_err})
+		{	## terrible, unrecoverable error
+			delete $errs->{line_err};
 		}
+		else
+		{
+			print GAF join("\t", @gaf_line) . "\n";
+		}
+#		$logger->error("gaf line: " . join(", ", @gaf_line));
+	}
 
-		# interacting taxon
-		my $tax = (defined($interacting_taxon) && $interacting_taxon ne '') ? "$md[6]|$interacting_taxon" : $md[6];
-
-		# output the annotation in GAF 2.0 format
-		print GAF "$db\t$db_object_id\t$md[2]\t$qual\t$go_id\t$reference\t$ev\t$with\t$aspect\t$md[3]\t$md[4]\t$md[5]\t$tax\t$date\t$assigned_by\t$annotation_extension\t$spliceform_id\n";
+	if ($errs)
+	{	write_errors( errs => $errs, options => $opt, logger => $logger );
 	}
 
 	# all done
-	close GPA;
+	close GPAD;
 	close GAF;
-	close LOG;
+	if ($opt->{'log'})
+	{	close $opt->{log_fh};
+	}
 }
 
-if ($#ARGV != 1) {
-	print STDERR "Usage: perl ", __FILE__, " <gpa_file> <gpi_file>\n";
+
+# parse the options from the command line
+sub parse_options {
+	my ($args) = @_;
+	my $errs;
+	my $opt;
+	while (@$args && $args->[0] =~ /^\-/) {
+		my $o = shift @$args;
+		if ($o eq '--gpad') {
+			if (@$args && $args->[0] !~ /^\-/)
+			{	$opt->{gpad} = shift @$args;
+			}
+		}
+		elsif ($o eq '--gpi') {
+			if (@$args && $args->[0] !~ /^\-/)
+			{	$opt->{gpi} = shift @$args;
+			}
+		}
+		elsif ($o eq '-o' || $o eq '--output' || $o eq '--gaf') {
+			if (@$args && $args->[0] !~ /^\-/)
+			{	$opt->{gaf} = shift @$args;
+			}
+		}
+		elsif ($o eq '-ont' || $o eq '--ontology') {
+			if (@$args && $args->[0] !~ /^\-/)
+			{	$opt->{ontology} = shift @$args;
+			}
+		}
+		elsif ($o eq '-l' || $o eq '--log') {
+			if (@$args && $args->[0] !~ /^\-/)
+			{	$opt->{log} = shift @$args;
+			}
+		}
+		elsif ($o eq '-h' || $o eq '--help') {
+			system("perldoc", $0);
+			exit(0);
+		}
+		elsif ($o eq '-v' || $o eq '--verbose') {
+			$opt->{verbose} = 1;
+		}
+		elsif ($o eq '--galaxy') {
+			$opt->{galaxy} = 1;
+		}
+		else {
+			push @$errs, "Ignored nonexistent option $o";
+		}
+	}
+
+	return check_options($opt, $errs);
 }
-else {
-	my ($gpa, $gpi) = @ARGV;
-	my ($format, $major, $minor) = get_file_format($gpa);
-	die "$gpa is not in GPA 1.1 format; aborting.\n" if (!defined($format) || ($format ne 'gpa' && $major == 1 && $minor == 1));
 
-	($format, $major, $minor) = get_file_format($gpi);
-	die "$gpi is not in GPI 1.0 format; aborting.\n" if (!defined($format) || ($format ne 'gpi' && $major == 1 && $minor == 0));
 
-	process_gpa($gpa, read_gpi($gpi));
+# process the input params
+sub check_options {
+	my ($opt, $errs) = @_;
+
+	if (!$opt)
+	{	GOBO::Logger::init_with_config( 'standard' );
+		$logger = GOBO::Logger::get_logger();
+		$logger->logdie("Error: please ensure you have specified GPAD and GPI input files and an output file.\nThe help documentation can be accessed using the command\n\t" . scr_name() . " --help");
+	}
+
+	if (! $opt->{verbose})
+	{	$opt->{verbose} = $ENV{GO_VERBOSE} || 0;
+	}
+
+	if ($opt->{galaxy})
+	{	GOBO::Logger::init_with_config( 'galaxy' );
+		$logger = GOBO::Logger::get_logger();
+	}
+	elsif ($opt->{verbose} || $ENV{DEBUG})
+	{	GOBO::Logger::init_with_config( 'verbose' );
+		$logger = GOBO::Logger::get_logger();
+	}
+	else
+	{	GOBO::Logger::init_with_config( 'standard' );
+		$logger = GOBO::Logger::get_logger();
+	}
+
+	$logger->debug("args: " . Dumper($opt));
+
+	if ($errs && @$errs)
+	{	foreach (@$errs)
+		{	$logger->error($_);
+		}
+	}
+	undef $errs;
+
+	if ($opt->{galaxy} && ! $opt->{'log'})
+	{	## we need a log file if we're in Galaxy mode
+		push @$errs, "specify a log file if using the script in Galaxy mode";
+	}
+
+	my $h = {
+		gpad => $gpad,
+		gpi => $gpi,
+	};
+	foreach my $g qw(gpad gpi)
+	{	if (!$opt->{$g})
+		{	## no input
+			push @$errs, "specify a " . uc($g) . " format input file using --" . $g . " /path/to/file";
+		}
+		else
+		{	## check the file is ok
+			if (! -e $opt->{$g})
+			{	push @$errs, "the file " . $opt->{$g} . " could not be found.";
+			}
+			elsif (! -r $opt->{$g} || -z $opt->{$g})
+			{	push @$errs, "the file " . $opt->{$g} . " could not be read.";
+			}
+			else
+			{	my ($format, $major, $minor) = get_file_format($opt->{$g});
+				if (! defined($format) || $format ne $g || $major ne $h->{$g}{version}{major} || $minor ne $h->{$g}{version}{minor})
+				{	push @$errs, $opt->{$g} . " is not in $g v" . $h->{$g}{version}{major} . $h->{$g}{version}{minor} . " format!";
+				}
+			}
+		}
+	}
+
+	if (! $opt->{ontology})
+	{	push @$errs, "specify an ontology file using --ontology /path/to/file";
+	}
+	elsif (! -e $opt->{ontology})
+	{	push @$errs, "the file " . $opt->{ontology} . " could not be found.";
+	}
+	elsif (! -r $opt->{ontology} || -z $opt->{ontology})
+	{	push @$errs, "the file " . $opt->{ontology} . " could not be read.";
+	}
+
+	if (! $opt->{gaf})
+	{	push @$errs, "specify an output (GAF) file using -o /path/to/file";
+	}
+	elsif ($opt->{gaf} !~ /\.gaf$/i && ! $opt->{galaxy})
+	{	## make sure the file ending is 'gaf'
+		$opt->{gaf} .= '.gaf';
+		$logger->info("Appending '.gaf' to output file name");
+	}
+
+	if (! $opt->{log})
+	{	#$logger->warn("Sending error messages to STDOUT");
+		#push @$errs, "specify an log file using -l /path/to/file";
+	}
+
+	## end processing
+	if ($errs && @$errs)
+	{	$logger->logdie("Please correct the following parameters to run the script:\n" . ( join("\n", map { " - " . $_ } @$errs ) ) . "\nThe help documentation can be accessed with the command\n\t" . scr_name() . " --help");
+	}
+
+	return $opt;
+}
+
+## script name, minus path
+sub scr_name {
+	my $n = $0;
+	$n =~ s/^.*\///;
+	return $n;
 }

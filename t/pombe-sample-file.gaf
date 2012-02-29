@@ -1,0 +1,126 @@
+!gaf-version: 2.0
+!file generated at 2011-11-11 14:56:20 from pombe.gpad by gpx2gaf.pl
+!
+!file generated at 2011-11-10 16:41:48 from pombe-sample.gaf
+!columns:
+!db	db_gp_form_id	relationship	go_id	reference	eco_id	with_from	interacting_taxon	date	assigned_by	annotation_xp
+!CVS Version: Revision: 1.185 $
+!GOC Validation Date: 10/28/2011 $
+!Submission Date: 8/24/2011
+! The above "Submission Date" is when the annotation project provided
+! this file to the Gene Ontology Consortium (GOC).  The "GOC Validation
+! Date" indicates when this file was last changed as a result of a GOC
+! validation and filtering process.  The "CVS Version" above is the
+! GOC version of this file.
+! Note: The contents of this file may differ from that submitted to the
+! GOC. The identifiers and syntax of the file have been checked, rows of
+! data not meeting the standards set by the GOC have been removed. This
+! file may also have annotations removed because the annotations for the
+! listed Taxonomy identifier are only allowed in a file provided by
+! another annotation project.  The original submitted file is available from:
+!  http://www.geneontology.org/gene-associations/submission/
+! For information on which taxon are allowed in which files please see:
+!  http://www.geneontology.org/GO.annotation.shtml#script
+!Project_name: Schizosaccharomyces pombe GeneDB
+!URL: http://www.genedb.org/genedb/pombe
+!Contact Email: val@sanger.ac.uk
+GeneDB_Spombe	SPAC1002.10c	sgt1		GO:0005634	PMID:16408318	IDA		C	SGT1 family transcriptional regulator Sgt1	SPAC1002.10c|sgt1	gene	taxon:4896	20051108	GeneDB_Spombe		
+GeneDB_Spombe	SPAC1002.10c	sgt1		GO:0006109	PMID:16408318	IMP		P	SGT1 family transcriptional regulator Sgt1	SPAC1002.10c|sgt1	gene	taxon:4896	20110407	GeneDB_Spombe		
+GeneDB_Spombe	SPAC1002.10c	sgt1		GO:0006355	PMID:16408318	IMP		P	SGT1 family transcriptional regulator Sgt1	SPAC1002.10c|sgt1	gene	taxon:4896	20051108	GeneDB_Spombe		
+GeneDB_Spombe	SPAC227.11c	SPAC227.11c		GO:0001948	GO_REF:0000001	ISS	Pfam:PF07915	F	sensor for misfolded ER glycoproteins Yos9	SPAC227.11c	gene	taxon:4896	20060801	GeneDB_Spombe		
+GeneDB_Spombe	SPAC227.11c	SPAC227.11c		GO:0005529	GO_REF:0000001	ISS	Pfam:PF07915	F	sensor for misfolded ER glycoproteins Yos9	SPAC227.11c	gene	taxon:4896	20060801	GeneDB_Spombe		
+GeneDB_Spombe	SPAC227.11c	SPAC227.11c		GO:0005783	GO_REF:0000001	ISS	SGD:S000002464	C	sensor for misfolded ER glycoproteins Yos9	SPAC227.11c	gene	taxon:4896	20041125	GeneDB_Spombe		
+GeneDB_Spombe	SPAC227.11c	SPAC227.11c		GO:0030433	GO_REF:0000001	ISS	SGD:S000002464	P	sensor for misfolded ER glycoproteins Yos9	SPAC227.11c	gene	taxon:4896	20051214	GeneDB_Spombe		
+GeneDB_Spombe	SPBC14F5.03c	kap123		GO:0006913	PMID:15116432	TAS		P	karyopherin Kap123	SPBC14F5.03c|kap123	gene	taxon:4896	20040501	GeneDB_Spombe		
+GeneDB_Spombe	SPBC14F5.03c	kap123		GO:0008565	PMID:15116432	TAS		F	karyopherin Kap123	SPBC14F5.03c|kap123	gene	taxon:4896	20040501	GeneDB_Spombe		
+GeneDB_Spombe	SPBC14F5.03c	kap123	colocalizes_with	GO:0005643	PMID:15116432	TAS		C	karyopherin Kap123	SPBC14F5.03c|kap123	gene	taxon:4896	20040501	GeneDB_Spombe		
+GeneDB_Spombe	SPBC14F5.03c	kap123	colocalizes_with	GO:0031965	PMID:10759889	IDA		C	karyopherin Kap123	SPBC14F5.03c|kap123	gene	taxon:4896	20040501	GeneDB_Spombe		
+GeneDB_Spombe	SPBC14F5.04c	pgk1		GO:0004618	GO_REF:0000001	ISS	SGD:S000000605	F	phosphoglycerate kinase Pgk1	SPBC14F5.04c|pgk1	gene	taxon:4896	20050303	GeneDB_Spombe		
+GeneDB_Spombe	SPBC14F5.04c	pgk1		GO:0005524	GO_REF:0000001	IC	GO:0004618	F	phosphoglycerate kinase Pgk1	SPBC14F5.04c|pgk1	gene	taxon:4896	20060920	GeneDB_Spombe		
+GeneDB_Spombe	SPBC14F5.04c	pgk1		GO:0005829	GO_REF:0000001	ISS	SGD:S000000605	C	phosphoglycerate kinase Pgk1	SPBC14F5.04c|pgk1	gene	taxon:4896	20050303	GeneDB_Spombe		
+GeneDB_Spombe	SPBC14F5.04c	pgk1		GO:0006094	GO_REF:0000001	ISS	SGD:S000000605	P	phosphoglycerate kinase Pgk1	SPBC14F5.04c|pgk1	gene	taxon:4896	20050303	GeneDB_Spombe		
+GeneDB_Spombe	SPBC14F5.04c	pgk1		GO:0006096	GO_REF:0000001	ISS	SGD:S000000605	P	phosphoglycerate kinase Pgk1	SPBC14F5.04c|pgk1	gene	taxon:4896	20050303	GeneDB_Spombe		
+GeneDB_Spombe	SPBC1861.04c	SPBC1861.04c		GO:0000244	GO_REF:0000001	ISS	SGD:S000004881	P	RNA-binding protein Prp24	SPBC1861.04c	gene	taxon:4896	20050519	GeneDB_Spombe		
+GeneDB_Spombe	SPBC1861.04c	SPBC1861.04c		GO:0000245	GO_REF:0000001	ISS	SGD:S000004881	P	RNA-binding protein Prp24	SPBC1861.04c	gene	taxon:4896	20050519	GeneDB_Spombe		
+GeneDB_Spombe	SPBC1861.04c	SPBC1861.04c		GO:0005688	GO_REF:0000001	ISS	SGD:S000004881	C	RNA-binding protein Prp24	SPBC1861.04c	gene	taxon:4896	20050519	GeneDB_Spombe		
+GeneDB_Spombe	SPBC1861.04c	SPBC1861.04c		GO:0017069	GO_REF:0000024	ISS	SGD:S000004881	F	RNA-binding protein Prp24	SPBC1861.04c	gene	taxon:4896	20080807	GeneDB_Spombe		
+GeneDB_Spombe	SPBC336.01	fbh1		GO:0000018	PMID:16135800	IGI	GeneDB_Spombe:SPAC30D11.10	P	DNA helicase I	SPBC336.01|fbh1|fdh1|fdh	gene	taxon:4896	20071228	GeneDB_Spombe		
+GeneDB_Spombe	SPBC336.01	fbh1		GO:0000151	GO_REF:0000001	ISS	Pfam:PF00646	C	DNA helicase I	SPBC336.01|fbh1|fdh1|fdh	gene	taxon:4896	20050602	GeneDB_Spombe		
+GeneDB_Spombe	SPBC336.01	fbh1		GO:0000724	PMID:16135799	IGI	GeneDB_Spombe:SPAC644.14c	P	DNA helicase I	SPBC336.01|fbh1|fdh1|fdh	gene	taxon:4896	20071228	GeneDB_Spombe		
+GeneDB_Spombe	SPBC336.01	fbh1		GO:0000724	PMID:16135800	IGI	GeneDB_Spombe:SPAC644.14c	P	DNA helicase I	SPBC336.01|fbh1|fdh1|fdh	gene	taxon:4896	20071228	GeneDB_Spombe		
+GeneDB_Spombe	SPBC336.01	fbh1		GO:0005515	PMID:15147268	IPI	GeneDB_Spombe:SPBC409.05	F	DNA helicase I	SPBC336.01|fbh1|fdh1|fdh	gene	taxon:4896	20080122	GeneDB_Spombe		
+GeneDB_Spombe	SPBC336.01	fbh1		GO:0005634	GO_REF:0000001	NAS		C	DNA helicase I	SPBC336.01|fbh1|fdh1|fdh	gene	taxon:4896	20050601	GeneDB_Spombe		
+GeneDB_Spombe	SPBC336.01	fbh1		GO:0005634	PMID:16135799	IDA		C	DNA helicase I	SPBC336.01|fbh1|fdh1|fdh	gene	taxon:4896	20071228	GeneDB_Spombe		
+GeneDB_Spombe	SPBC336.01	fbh1		GO:0006310	PMID:16135799	IGI	GeneDB_Spombe:SPAC3G6.06c	P	DNA helicase I	SPBC336.01|fbh1|fdh1|fdh	gene	taxon:4896	20071228	GeneDB_Spombe		
+GeneDB_Spombe	SPBC336.01	fbh1		GO:0017116	PMID:9228070	IDA		F	DNA helicase I	SPBC336.01|fbh1|fdh1|fdh	gene	taxon:4896	20050601	GeneDB_Spombe		
+GeneDB_Spombe	SPBC336.01	fbh1		GO:0030674	GO_REF:0000001	ISS	Pfam:PF00646	F	DNA helicase I	SPBC336.01|fbh1|fdh1|fdh	gene	taxon:4896	20050602	GeneDB_Spombe		
+GeneDB_Spombe	SPBC336.01	fbh1		GO:0031297	PMID:16135799	IMP		P	DNA helicase I	SPBC336.01|fbh1|fdh1|fdh	gene	taxon:4896	20071228	GeneDB_Spombe		
+GeneDB_Spombe	SPBC336.02	SPBC336.02		GO:0000154	GO_REF:0000001	ISS	SGD:S000006187	P	18S rRNA dimethylase	SPBC336.02	gene	taxon:4896	20050404	GeneDB_Spombe		
+GeneDB_Spombe	SPBC336.02	SPBC336.02		GO:0000179	GO_REF:0000001	ISS	SGD:S000006187	F	18S rRNA dimethylase	SPBC336.02	gene	taxon:4896	20050404	GeneDB_Spombe		
+GeneDB_Spombe	SPBC336.02	SPBC336.02		GO:0005730	GO_REF:0000001	ISS	SGD:S000006187	C	18S rRNA dimethylase	SPBC336.02	gene	taxon:4896	20050404	GeneDB_Spombe		
+GeneDB_Spombe	SPBC336.02	SPBC336.02		GO:0006364	GO_REF:0000001	ISS	SGD:S000006187	P	18S rRNA dimethylase	SPBC336.02	gene	taxon:4896	20050404	GeneDB_Spombe		
+GeneDB_Spombe	SPBC336.03	efc25		GO:0005088	PMID:12052869	IMP		F	Ras1 guanyl-nucleotide exchange factor Efc25	SPBC336.03|efc25	gene	taxon:4896	20061030	GeneDB_Spombe	has_substrate(GeneDB_Spombe:SPAC17H9.09c)	
+GeneDB_Spombe	SPBC336.03	efc25		GO:0007163	PMID:9256078	IGI	GeneDB_Spombe:SPCC1223.06	P	Ras1 guanyl-nucleotide exchange factor Efc25	SPBC336.03|efc25	gene	taxon:4896	20061030	GeneDB_Spombe		
+GeneDB_Spombe	SPBC336.03	efc25		GO:0032488	PMID:9256078	TAS		P	Ras1 guanyl-nucleotide exchange factor Efc25	SPBC336.03|efc25	gene	taxon:4896	20061030	GeneDB_Spombe		
+GeneDB_Spombe	SPBC336.04	cdc6		GO:0000731	PMID:15173383	TAS		P	DNA polymerase delta catalytic subunit Cdc6	SPBC336.04|cdc6|pol3|pold|mis10	gene	taxon:4896	20040628	GeneDB_Spombe		
+GeneDB_Spombe	SPBC336.04	cdc6		GO:0005515	PMID:15173383	IPI	GeneDB_Spombe:SPAC27E2.05	F	DNA polymerase delta catalytic subunit Cdc6	SPBC336.04|cdc6|pol3|pold|mis10	gene	taxon:4896	20040628	GeneDB_Spombe	dependent_on(Pfam:PF14260)	
+GeneDB_Spombe	SPBC336.04	cdc6		GO:0005515	PMID:8887553	IPI	GeneDB_Spombe:SPAC27E2.05	F	DNA polymerase delta catalytic subunit Cdc6	SPBC336.04|cdc6|pol3|pold|mis10	gene	taxon:4896	20040628	GeneDB_Spombe		
+GeneDB_Spombe	SPBC336.04	cdc6		GO:0007346	PMID:7865880	IMP		P	DNA polymerase delta catalytic subunit Cdc6	SPBC336.04|cdc6|pol3|pold|mis10	gene	taxon:4896	20100630	GeneDB_Spombe		
+GeneDB_Spombe	SPBC336.04	cdc6		GO:0008408	GO_REF:0000001	IC	GO:0043625	F	DNA polymerase delta catalytic subunit Cdc6	SPBC336.04|cdc6|pol3|pold|mis10	gene	taxon:4896	20040628	GeneDB_Spombe		
+GeneDB_Spombe	SPBC336.04	cdc6		GO:0010972	PMID:1600944	IMP		P	DNA polymerase delta catalytic subunit Cdc6	SPBC336.04|cdc6|pol3|pold|mis10	gene	taxon:4896	20100630	GeneDB_Spombe		
+GeneDB_Spombe	SPBC336.04	cdc6		GO:0043137	PMID:15173383	TAS		P	DNA polymerase delta catalytic subunit Cdc6	SPBC336.04|cdc6|pol3|pold|mis10	gene	taxon:4896	20040628	GeneDB_Spombe		
+GeneDB_Spombe	SPBC336.04	cdc6		GO:0043596	GO_REF:0000001	IC	GO:0043625	C	DNA polymerase delta catalytic subunit Cdc6	SPBC336.04|cdc6|pol3|pold|mis10	gene	taxon:4896	20040628	GeneDB_Spombe		
+GeneDB_Spombe	SPBC336.04	cdc6		GO:0043625	PMID:15173383	TAS		C	DNA polymerase delta catalytic subunit Cdc6	SPBC336.04|cdc6|pol3|pold|mis10	gene	taxon:4896	20040628	GeneDB_Spombe		
+GeneDB_Spombe	SPBC336.04	cdc6	contributes_to	GO:0003887	PMID:15173383	TAS		F	DNA polymerase delta catalytic subunit Cdc6	SPBC336.04|cdc6|pol3|pold|mis10	gene	taxon:4896	20040628	GeneDB_Spombe		
+GeneDB_Spombe	SPBC336.07	sfc3		GO:0000127	PMID:10906331	IDA		C	transcription factor TFIIIC complex B box binding subunit Sfc3	SPBC336.07|sfc3	gene	taxon:4896	20050416	GeneDB_Spombe		
+GeneDB_Spombe	SPBC336.07	sfc3		GO:0006384	PMID:10906331	IDA		P	transcription factor TFIIIC complex B box binding subunit Sfc3	SPBC336.07|sfc3	gene	taxon:4896	20050416	GeneDB_Spombe		
+GeneDB_Spombe	SPBC336.07	sfc3	contributes_to	GO:0000995	PMID:10906331	IDA		F	transcription factor TFIIIC complex B box binding subunit Sfc3	SPBC336.07|sfc3	gene	taxon:4896	20050416	GeneDB_Spombe		
+GeneDB_Spombe	SPBC336.07	sfc3	contributes_to	GO:0043035	PMID:16751097	IDA		F	transcription factor TFIIIC complex B box binding subunit Sfc3	SPBC336.07|sfc3	gene	taxon:4896	20070216	GeneDB_Spombe		
+GeneDB_Spombe	SPBC336.08	spc24		GO:0000070	GO_REF:0000001	IC	GO:0000778	P	spindle pole body protein Spc24	SPBC336.08|spc24	gene	taxon:4896	20040928	GeneDB_Spombe		
+GeneDB_Spombe	SPBC336.08	spc24		GO:0000778	PMID:11266451	IDA		C	spindle pole body protein Spc24	SPBC336.08|spc24	gene	taxon:4896	20050301	GeneDB_Spombe		
+GeneDB_Spombe	SPBC336.08	spc24		GO:0000778	PMID:15728720	IDA		C	spindle pole body protein Spc24	SPBC336.08|spc24	gene	taxon:4896	20050301	GeneDB_Spombe		
+GeneDB_Spombe	SPBC336.08	spc24		GO:0005515	PMID:15728720	IPI	GeneDB_Spombe:SPBC11C11.03	F	spindle pole body protein Spc24	SPBC336.08|spc24	gene	taxon:4896	20050301	GeneDB_Spombe		
+GeneDB_Spombe	SPBC336.08	spc24		GO:0005515	PMID:15728720	IPI	GeneDB_Spombe:SPCC188.04c	F	spindle pole body protein Spc24	SPBC336.08|spc24	gene	taxon:4896	20050301	GeneDB_Spombe		
+GeneDB_Spombe	SPBC336.08	spc24		GO:0031262	PMID:15728720	TAS		C	spindle pole body protein Spc24	SPBC336.08|spc24	gene	taxon:4896	20050301	GeneDB_Spombe		
+GeneDB_Spombe	SPBC336.08	spc24		GO:0031617	PMID:16079914	IDA		C	spindle pole body protein Spc24	SPBC336.08|spc24	gene	taxon:4896	20050824	GeneDB_Spombe		
+GeneDB_Spombe	SPBC336.08	spc24		GO:0042803	PMID:15728720	IPI	GeneDB_Spombe:SPBC336.08	F	spindle pole body protein Spc24	SPBC336.08|spc24	gene	taxon:4896	20050301	GeneDB_Spombe		
+GeneDB_Spombe	SPBC336.08	spc24		GO:0051455	PMID:15728720	IDA		P	spindle pole body protein Spc24	SPBC336.08|spc24	gene	taxon:4896	20050301	GeneDB_Spombe		
+GeneDB_Spombe	SPBC405.04c	ypt7		GO:0003924	PMID:9443913	TAS		F	GTPase Ypt7	SPBC405.04c|ypt7	gene	taxon:4896	20051125	GeneDB_Spombe		
+GeneDB_Spombe	SPBC405.04c	ypt7		GO:0005525	GO_REF:0000001	IC	GO:0003924	F	GTPase Ypt7	SPBC405.04c|ypt7	gene	taxon:4896	20051125	GeneDB_Spombe		
+GeneDB_Spombe	SPBC405.04c	ypt7		GO:0006886	GO_REF:0000001	IC	GO:0016192	P	GTPase Ypt7	SPBC405.04c|ypt7	gene	taxon:4896	20041206	GeneDB_Spombe		
+GeneDB_Spombe	SPBC405.04c	ypt7		GO:0006896	GO_REF:0000001	ISS	UniProtKB:P32939	P	GTPase Ypt7	SPBC405.04c|ypt7	gene	taxon:4896	20041206	GeneDB_Spombe		
+GeneDB_Spombe	SPBC405.04c	ypt7		GO:0007035	PMID:16291725	IGI	GeneDB_Spombe:SPAC607.09c	P	GTPase Ypt7	SPBC405.04c|ypt7	gene	taxon:4896	20051125	GeneDB_Spombe		
+GeneDB_Spombe	SPBC405.04c	ypt7		GO:0007264	PMID:9443913	TAS		P	GTPase Ypt7	SPBC405.04c|ypt7	gene	taxon:4896	20051125	GeneDB_Spombe		
+GeneDB_Spombe	SPBC405.04c	ypt7		GO:0030100	PMID:16141239	IMP		P	GTPase Ypt7	SPBC405.04c|ypt7	gene	taxon:4896	20050913	GeneDB_Spombe		
+GeneDB_Spombe	SPBC405.04c	ypt7		GO:0031321	PMID:16357443	IMP		P	GTPase Ypt7	SPBC405.04c|ypt7	gene	taxon:4896	20060123	GeneDB_Spombe		
+GeneDB_Spombe	SPBC405.04c	ypt7		GO:0042144	PMID:9443913	IMP		P	GTPase Ypt7	SPBC405.04c|ypt7	gene	taxon:4896	20041206	GeneDB_Spombe		
+GeneDB_Spombe	SPBC405.04c	ypt7		GO:0045324	PMID:16357443	IMP		P	GTPase Ypt7	SPBC405.04c|ypt7	gene	taxon:4896	20060123	GeneDB_Spombe	during(GO:0030437)	
+GeneDB_Spombe	SPBC405.04c	ypt7		GO:0051469	PMID:9443913	IMP		P	GTPase Ypt7	SPBC405.04c|ypt7	gene	taxon:4896	20041206	GeneDB_Spombe		
+GeneDB_Spombe	SPBC405.04c	ypt7		GO:0061191	PMID:19453973	IMP		P	GTPase Ypt7	SPBC405.04c|ypt7	gene	taxon:4896	20100704	GeneDB_Spombe		
+GeneDB_Spombe	SPBTRNAASP.04	SPBTRNAASP.04		GO:0005737	GO_REF:0000001	RCA		C	tRNA Aspartic acid	SPBTRNAASP.04	gene	taxon:4896	20090711	GeneDB_Spombe		
+GeneDB_Spombe	SPCC16C4.17	mug123		GO:0030437	PMID:16303567	IMP		P	meiotically upregulated gene Mug123	SPCC16C4.17|mug123	gene	taxon:4896	20051007	GeneDB_Spombe		
+GeneDB_Spombe	SPCC16C4.19	SPCC16C4.19		GO:0000172	GO_REF:0000001	ISS	SGD:S000002886	C	RNase MRP subunit	SPCC16C4.19|SPCC5E4.08	gene	taxon:4896	20070821	GeneDB_Spombe		
+GeneDB_Spombe	SPCC16C4.19	SPCC16C4.19		GO:0006379	GO_REF:0000001	ISS	SGD:S000002886	P	RNase MRP subunit	SPCC16C4.19|SPCC5E4.08	gene	taxon:4896	20070821	GeneDB_Spombe		
+GeneDB_Spombe	SPCC16C4.19	SPCC16C4.19		GO:0007346	GO_REF:0000001	ISS	SGD:S000002886	P	RNase MRP subunit	SPCC16C4.19|SPCC5E4.08	gene	taxon:4896	20100919	GeneDB_Spombe		
+GeneDB_Spombe	SPCC16C4.22	SPCC16C4.22		GO:0006351	GO_REF:0000024	ISS	Pfam:PF00808	P	histone-like transcription factor family	SPCC16C4.22	gene	taxon:4896	20080102	GeneDB_Spombe		
+GeneDB_Spombe	SPCC1884.02	nic1		GO:0005887	PMID:10748059	TAS		C	NiCoT heavy metal ion transporter Nic1	SPCC1884.02|nic1|SPCC757.01	gene	taxon:4896	20060206	GeneDB_Spombe		
+GeneDB_Spombe	SPCC1884.02	nic1		GO:0015099	PMID:10748059	IMP		F	NiCoT heavy metal ion transporter Nic1	SPCC1884.02|nic1|SPCC757.01	gene	taxon:4896	20060206	GeneDB_Spombe		
+GeneDB_Spombe	SPCC1884.02	nic1		GO:0034254	PMID:10748059	IMP		P	NiCoT heavy metal ion transporter Nic1	SPCC1884.02|nic1|SPCC757.01	gene	taxon:4896	20060206	GeneDB_Spombe		
+GeneDB_Spombe	SPCC1884.02	nic1		GO:0035444	PMID:10748059	IMP		P	NiCoT heavy metal ion transporter Nic1	SPCC1884.02|nic1|SPCC757.01	gene	taxon:4896	20060206	GeneDB_Spombe		
+GeneDB_Spombe	SPCC297.03	ssp1		GO:0004674	GO_REF:0000001	ISS	InterPro:IPR008271	F	serine/threonine protein kinase Ssp1	SPCC297.03|ssp1	gene	taxon:4896	20041203	GeneDB_Spombe		
+GeneDB_Spombe	SPCC297.03	ssp1		GO:0005524	GO_REF:0000001	ISS	Pfam:PF00069	F	serine/threonine protein kinase Ssp1	SPCC297.03|ssp1	gene	taxon:4896	20050902	GeneDB_Spombe		
+GeneDB_Spombe	SPCC297.03	ssp1		GO:0005737	PMID:10233158	IDA		C	serine/threonine protein kinase Ssp1	SPCC297.03|ssp1	gene	taxon:4896	20041203	GeneDB_Spombe		
+GeneDB_Spombe	SPCC297.03	ssp1		GO:0006468	GO_REF:0000001	ISS	Pfam:PF00069	P	serine/threonine protein kinase Ssp1	SPCC297.03|ssp1	gene	taxon:4896	20050902	GeneDB_Spombe		
+GeneDB_Spombe	SPCC297.03	ssp1		GO:0007163	PMID:7628434	IMP		P	serine/threonine protein kinase Ssp1	SPCC297.03|ssp1	gene_transcript	taxon:4896	20041203	GeneDB_Spombe		GeneDB_Spombe:googleplex
+GeneDB_Spombe	SPCC297.03	ssp1		GO:0007165	GO_REF:0000001	IC	GO:0004674	P	serine/threonine protein kinase Ssp1	SPCC297.03|ssp1	gene	taxon:4896	20070827	GeneDB_Spombe		
+GeneDB_Spombe	SPCC297.03	ssp1		GO:0030042	PMID:10233158	IGI	GeneDB_Spombe:SPAC4A8.15c	P	serine/threonine protein kinase Ssp1	SPCC297.03|ssp1	gene	taxon:4896	20041203	GeneDB_Spombe		
+GeneDB_Spombe	SPCC297.03	ssp1		GO:0030428	PMID:10233158	IDA		C	serine/threonine protein kinase Ssp1	SPCC297.03|ssp1	gene	taxon:4896	20041203	GeneDB_Spombe	during(GO:0033554)	
+GeneDB_Spombe	SPCC297.03	ssp1		GO:0030950	PMID:7628434	IMP		P	serine/threonine protein kinase Ssp1	SPCC297.03|ssp1	gene	taxon:4896	20041203	GeneDB_Spombe		
+GeneDB_Spombe	SPCC297.03	ssp1		GO:0033554	PMID:10233158	IMP		P	serine/threonine protein kinase Ssp1	SPCC297.03|ssp1	gene	taxon:4896	20041203	GeneDB_Spombe		
+GeneDB_Spombe	SPCC297.03	ssp1		GO:0034613	PMID:7628434	IGI	GeneDB_Spombe:SPBC32H8.12c	P	serine/threonine protein kinase Ssp1	SPCC297.03|ssp1	gene	taxon:4896	20041203	GeneDB_Spombe		
+GeneDB_Spombe	SPCC297.03	ssp1		GO:0051285	PMID:10233158	IDA		C	serine/threonine protein kinase Ssp1	SPCC297.03|ssp1	gene	taxon:4896	20041203	GeneDB_Spombe	during(GO:0033554)	
+GeneDB_Spombe	SPCC297.03	ssp1		GO:0051519	PMID:10233158	IMP		P	serine/threonine protein kinase Ssp1	SPCC297.03|ssp1	gene	taxon:4896	20041203	GeneDB_Spombe		
+GeneDB_Spombe	SPCC297.03	ssp1		GO:0051519	PMID:20501954	IMP		P	serine/threonine protein kinase Ssp1	SPCC297.03|ssp1	gene	taxon:4896	20100529	GeneDB_Spombe		
+GeneDB_Spombe	SPCC297.03	ssp1		GO:0070317	PMID:19366728	IMP		P	serine/threonine protein kinase Ssp1	SPCC297.03|ssp1	gene	taxon:4896	20100919	GeneDB_Spombe		
+GeneDB_Spombe	SPCC297.05	SPCC297.05		GO:0007165	GO_REF:0000001	ISS	Pfam:PF00130	P	diacylglycerol binding protein	SPCC297.05	gene	taxon:4896	20060807	GeneDB_Spombe		
+GeneDB_Spombe	SPCC297.05	SPCC297.05		GO:0019992	GO_REF:0000001	ISS	Pfam:PF00130	F	diacylglycerol binding protein	SPCC297.05	gene	taxon:4896	20060807	GeneDB_Spombe		
