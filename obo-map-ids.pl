@@ -15,6 +15,10 @@ my $replace_ids;
 my $freetext;
 my $tabchar = "\t";
 my @maptblfs = ();
+my $prefix1;
+my $prefix2;
+my $no_map_ids;
+my @ignore_tags = ();
 while ($ARGV[0] =~ /^\-/) {
     my $opt = shift @ARGV;
     if ($opt eq '-h' || $opt eq '--help') {
@@ -48,6 +52,15 @@ while ($ARGV[0] =~ /^\-/) {
     elsif ($opt eq '--replace-ids') {
         $replace_ids = 1;
     }
+    elsif ($opt eq '--ignore-tag') {
+        push(@ignore_tags, shift @ARGV);
+    }
+    elsif ($opt eq '--ignore-self-refs') {
+        push(@ignore_tags, qw(id alt_id xref consider replaced_by));
+    }
+    elsif ($opt eq '--no-map-ids') {
+        $no_map_ids = 1;
+    }
     elsif ($opt eq '--freetext') {
         $freetext = 1;
     }
@@ -59,6 +72,12 @@ while ($ARGV[0] =~ /^\-/) {
     }
     elsif ($opt eq '--regex-filter') {
         $regex_filter = shift @ARGV;
+    }
+    elsif ($opt eq '--prefix1') {
+        $prefix1 = shift @ARGV;
+    }
+    elsif ($opt eq '--prefix2') {
+        $prefix2 = shift @ARGV;
     }
     elsif ($opt eq '-k' || $opt eq '--col') {
         $colnoh{shift @ARGV} = 1;
@@ -100,8 +119,13 @@ my %obsh = ();
 my %linkh = ();
 
 # build map
+print STDERR "building map from: @ARGV\n";
+if (@ARGV) {
 while (<>) {
     chomp;
+
+    s/^equivalent_to:/xref:/;
+
     if (/^id:\s+(\S+)/) {
         $id = $1;
 	$validh{$id} = 1;
@@ -132,14 +156,27 @@ while (<>) {
         $obsh{$id} = 1;
     }
 }
+}
 
 foreach (@maptblfs) {
     open(F,$_) || die $_;
+    my %doneh = ();
     while (<F>) {
         chomp;
+        # assume two columns
         my ($id,$x) = split(/\t/,$_);
+        next unless $id;
+        next unless $x;
+        if ($prefix1) {
+            $id = "$prefix1:$id";
+        }
+        if ($prefix2) {
+            $x = "$prefix2:$x";
+        }
+        next if $doneh{"$id $x"};
+        $doneh{"$id $x"}=1;
         push(@{$xrefh{$id}},$x);
-        push(@{$invxrefh{$1}},$id);
+        push(@{$invxrefh{$x}},$id);
     }
     close(F);
 }
@@ -189,7 +226,7 @@ if ($use_link_to) {
 }
 if ($use_xref_inverse) {
     foreach my $k (keys %invxrefh) {
-        if (@{$invxrefh{$k}} == 1) {
+        if (@{$invxrefh{$k}} >= 1) {
             printf STDERR "using xref (inv) $k --> @{$invxrefh{$k}}\n"  if $verbose;
             if (!$alt{$k}) {
                 $alt{$k} = idfilter($invxrefh{$k});
@@ -197,7 +234,6 @@ if ($use_xref_inverse) {
         }
     }
 }
-
 
 printf STDERR "mappings: %d\n", scalar(keys %alt);
 
@@ -229,6 +265,7 @@ foreach (@out) {
 }
 exit 0;
 
+# allows us to 
 sub idfilter {
     my $arr = shift;
     if ($regex_filter) {
@@ -261,10 +298,13 @@ sub map_tab_files {
             }
         }
         if ($modified) {
+            $n++;
             push(@out,join("\t",@vals)."\n");
         }
         else {
+            # TODO - option for omitting non-mapped
             print STDERR "not modified: $_\n";
+            push(@out,"$_\n");
         }
     }
     close(F);
@@ -310,11 +350,21 @@ sub map_obo_files {
 #                unless /^\s*$/;
             next;
         }
-        if (/^(id|alt_id|xref):/ && !$replace_ids) {
-            # prevent self-replacements
-            push(@out, "$_\n");
-            next;
+
+        my $next = 0;
+        foreach my $t (@ignore_tags) {
+            if (/^$t:/) {
+                push(@out, "$_\n");
+                $next = 1;
+            }
         }
+        next if $next;
+        #if ((/^(alt_id|xref):/ && !$replace_ids) ||
+        #    (/^(id|alt_id|xref):/ && $replace_ids)) {
+        #    # prevent self-replacements
+        #    push(@out, "$_\n");
+        #    next;
+        #}
         my @toks = split(' ',$_);
         my $oldtoks = "@toks";
         @toks = map {$alt{$_} || $_} @toks;

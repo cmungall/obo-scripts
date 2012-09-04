@@ -68,6 +68,14 @@ foreach (@lines) {
             print $_;
         }
     }
+    elsif (/^(is_a|relationship|intersection_of|union_of)/) {
+        foreach my $k (keys %idmap) {
+            if (/$k\s/) {
+                s/$k/$idmap{$k}/g;
+            }
+        }
+        print;
+    }
     else {
         if (/($idspace:\S+)/x) {
             my $id = $1;

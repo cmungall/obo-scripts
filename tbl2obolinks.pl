@@ -3,6 +3,7 @@
 my $rel;
 my $swap;
 my $src;
+my $keep_bangs = 0;
 while ($ARGV[0] =~ /^\-/) {
     my $opt = shift @ARGV;
     if ($opt eq '-r' || $opt eq '--rel') {
@@ -20,11 +21,14 @@ while ($ARGV[0] =~ /^\-/) {
     elsif ($opt eq '--source') {
         $src = shift @ARGV;
     }
+    elsif ($opt eq '-k') {
+        $keep_bangs = 1;
+    }
 }
 my %linkh = ();
 while (<>) {
     chomp;
-    s/\!.*//;
+    s/\!.*// unless $keep_bangs;
     s/^\s+//;
     s/\s+$//;
     next unless $_;
@@ -33,9 +37,9 @@ while (<>) {
         @cols = ("$cols[0] ! $cols[1]","$cols[2] ! $cols[3]");
     }
     foreach (@cols) {
-	if (/^(\S+:\d+)\-(.*)/) {
-	    $_ = "$1 ! $2";
-	}
+	#if (/^(\S+:\d+)\-(.*)/) {
+	#    $_ = "$1 ! $2";
+	#}
         if ($src) {
             s/ \! / {source="$src"} \! /;
         }

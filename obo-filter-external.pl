@@ -52,6 +52,7 @@ my @lines = ();
 foreach (@all_lines) {
     chomp;
 
+    # guess IDspace
     if (!$idspace) {
 	if (/^id:\s+(\S+):(\S+)/) {
 	    $idspace = $1;

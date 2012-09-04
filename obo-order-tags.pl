@@ -26,6 +26,7 @@ intersection_of
 union_of
 disjoint_from
 relationship
+equivalent_to
 created_by
 creation_date
 is_obsolete
@@ -132,7 +133,7 @@ sub write_stanza {
     }
     die "no id for: @lines" unless $id;
     die unless $stanza_type;
-    die unless @lines;
+    die "no lines for $id" unless @lines;
     print "[$stanza_type]\n";
     print "id: $id\n";
     foreach (sort { rnk($a) <=> rnk($b) } @lines) {

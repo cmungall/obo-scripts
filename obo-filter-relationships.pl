@@ -37,6 +37,9 @@ while($_ = shift @lines) {
         else {
             $ok = 0;
         }
+        if ($negate) {
+            $ok = !$ok;
+        }
     }
     print if $ok;
 }

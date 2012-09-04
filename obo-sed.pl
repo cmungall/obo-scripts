@@ -40,8 +40,6 @@ if (!@ARGV) {
 my $n_stanzas = 0;
 while (@ARGV) {
     my $f = pop @ARGV;
-    #$/ = "\n\n";
-    #$/ = "^\[";
     if ($f eq '-') {
         *F=*STDIN;
     }
@@ -54,10 +52,11 @@ while (@ARGV) {
         $s .= $_;
     }
     my @toks = split(/$del/,$s);
+    my $num = scalar(@toks);
     foreach (@toks) {
         $n_stanzas++;
         if (!$hdr && $_ !~ /^\[/) {
-            print unless $noheader || $count;
+            print "$_$del" unless $noheader || $count;
             $hdr = 1;
         }
         else {
@@ -68,7 +67,7 @@ while (@ARGV) {
             $n++;
             if (!$count) {
                 print;
-                print $del;
+                print $del unless $n_stanzas == $num;
             }
         }
     }

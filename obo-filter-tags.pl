@@ -40,7 +40,10 @@ print STDERR "Tags: ", join(', ',keys %tag_h),"\n";
 
 my $on = 1;
 my $in_header = 1;
-my @lines = <>;
+my @lines = ();
+while (<>) {
+    push(@lines,$_);
+}
 while($_ = shift @lines) {
     if (/^\[(\S+)\]/) {
         $in_header=0;

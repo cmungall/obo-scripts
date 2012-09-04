@@ -89,6 +89,10 @@ while (@ARGV) {
             if (/^relationship:\s*(\S+)/) {
                 $refrel{$1} .= "$_\n";
             }
+            elsif (/^property_value:\s*(\S+)/) {
+                $referenced{$1} = 1;
+                $refrel{$1} .= "$_\n";
+            }
 
         }
         my @xps = grep {/^intersection_of:/} @lines;
@@ -99,6 +103,7 @@ while (@ARGV) {
 	    my @xp_links = ();
             my @genii = ();
             foreach (@xps) {
+                s/\{cardinality=(.*)\}/CARD=$1/;
                 s/\s*\!.*//;
                 s/\s*\{.*\}.*//;
                 my @parts = split(' ',$_);
@@ -151,7 +156,8 @@ foreach (keys %done) {
     if ($stanzatype{$_} eq 'typedef') {
         $refrel{$_} = 0;
 	if (!$referenced{$_}) {
-	    flag("unreferenced relation", $_);
+	    #flag("unreferenced relation", $_);
+            print STDERR "unreferenced relation: $_\n";
 	}
         
     }

@@ -67,7 +67,7 @@ while(<F>) {
 		if ($check) {
 		    if (/!\s+(.*)\s*/) {
 			if (lc("@cmts") ne lc($1)) {
-			    print STDERR "different: \"$1\" not the same as \"@cmts\"\n";
+			    print STDERR "different: \"$1\" not the same as \"@cmts\" in line: $_\n";
 			}
 		    }
 		}
