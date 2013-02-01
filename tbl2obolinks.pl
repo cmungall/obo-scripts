@@ -36,13 +36,16 @@ while (<>) {
     if (@cols == 4) {
         @cols = ("$cols[0] ! $cols[1]","$cols[2] ! $cols[3]");
     }
+    my $line = $_;
+    my $n=0;
     foreach (@cols) {
 	#if (/^(\S+:\d+)\-(.*)/) {
 	#    $_ = "$1 ! $2";
 	#}
-        if ($src) {
+        if ($src && $n) {
             s/ \! / {source="$src"} \! /;
         }
+        $n++;
     }
     if (!$rel) {
         $rel = shift @cols;
@@ -75,6 +78,9 @@ foreach my $id (keys %linkh) {
         elsif ($rel eq 'def_xref') {
             printf("def: \".\" [%s]\n",
 		   join(', ', @{$relh->{$rel}}));
+        }
+        elsif ($rel =~ /pv:(\S+)/) {
+            printf("property_value: $1 \"$_\" xsd:string\n") foreach @{$relh->{$rel}};
         }
         else {
             print "relationship: $rel $_\n" foreach @{$relh->{$rel}};

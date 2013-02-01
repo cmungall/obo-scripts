@@ -1,7 +1,7 @@
 #!/usr/bin/perl -w
 use strict;
 
-# See: http://obofoundry.org/wiki/index.php/Ontology_registry_overhaul
+# See: http://code.google.com/p/obo-registry/wiki/Software
 
 print hdr();
 
