@@ -23,9 +23,9 @@ my @onts = @ARGV;
 my $ua = LWP::UserAgent->new;
 
 $ua->agent( 'OBO-Fetch/1.001' );
-my $url = 'http://obo.cvs.sourceforge.net/viewvc/obo/obo/website/cgi-bin/ontologies.txt';
+my $url = 'http://obo-registry.googlecode.com/svn/trunk/metadata/ontologies.txt';
 if ($verbose) {
-    print STDERR "Fetching: $url\n";
+    print STDERR "Using: $url\n";
 }
 my $req = HTTP::Request->new( GET => $url );
 my $res = $ua->request( $req );
@@ -73,12 +73,13 @@ sub fetch_ont {
             }
             elsif ($t eq 'source' && !$url) {
                 $url = $v;
+                $url =~ s/.*\|//;
             }
         }
     }
 
     if ($verbose) {
-        print STDERR "Fetching: $url\n";
+        print STDERR "Requesting: $url\n";
     }
     $req = HTTP::Request->new( GET => $url );
     $res = $ua->request( $req );
