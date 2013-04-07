@@ -27,6 +27,7 @@ my $url = 'http://obo-registry.googlecode.com/svn/trunk/metadata/ontologies.txt'
 if ($verbose) {
     print STDERR "Using: $url\n";
 }
+
 my $req = HTTP::Request->new( GET => $url );
 my $res = $ua->request( $req );
 if ($verbose) {
@@ -40,7 +41,6 @@ if( !$res->is_success ) {
 $content = $res->content;
 my @lines = split(/\n/,$content);
 
-
 foreach my $ont (@onts) {
     fetch_ont($ont);
 }
@@ -51,7 +51,6 @@ sub fetch_ont {
     if ($verbose) {
         print STDERR "  Scanning: $ont\n";
     }
-
 
     $url = '';
     my $match = 0;
@@ -76,6 +75,10 @@ sub fetch_ont {
                 $url =~ s/.*\|//;
             }
         }
+    }
+    if ($ont eq 'GO') {
+        # temp fix - TODO fix registry
+        $url = 'http://geneontology.org/ontology/go-basic.obo';
     }
 
     if ($verbose) {
