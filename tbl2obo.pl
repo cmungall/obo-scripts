@@ -30,7 +30,7 @@ sub print_term {
     }
     elsif ($n =~ /(.*)\t(.*)/) {
         $n = $1;
-        $s = $2; 
+        $d = $2; 
     }
     print "[Term]\nid: $id\nname: $n\n";
     print "synonym: \"$s\" EXACT []\n" if $s;

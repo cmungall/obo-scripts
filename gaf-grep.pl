@@ -358,7 +358,7 @@ sub init_taxmap {
     'taxon:7227'=>'fb',
     'taxon:5664'=>'GeneDB_Lmajor',
     'taxon:5833'=>'GeneDB_Pfalciparum',
-    'taxon:4896'=>'GeneDB_Spombe',
+    'taxon:4896'=>'pombase',
     'taxon:185431'=>'GeneDB_Tbrucei',
     'taxon:37546'=>'GeneDB_tsetse',
     'taxon:9031'=>'goa_chicken',

@@ -4,6 +4,7 @@ my $rel;
 my $swap;
 my $src;
 my $keep_bangs = 0;
+my $aa = '';
 while ($ARGV[0] =~ /^\-/) {
     my $opt = shift @ARGV;
     if ($opt eq '-r' || $opt eq '--rel') {
@@ -17,6 +18,9 @@ while ($ARGV[0] =~ /^\-/) {
     }
     elsif ($opt eq '--swap') {
         $swap = 1;
+    }
+    elsif ($opt eq '--aa') {
+        $aa = ' {' . (shift @ARGV) . '}';
     }
     elsif ($opt eq '--source') {
         $src = shift @ARGV;
@@ -62,28 +66,39 @@ while (<>) {
 foreach my $id (keys %linkh) {
     print "[Term]\nid: $id\n";
     my $relh = $linkh{$id};
+    my @vs = @{$relh->{$rel}};
+    if ($aa) {
+        @vs = map {
+            if (m@(.*) ! (.*)@) {
+                "$1$aa ! $2";
+            }
+            else {
+                "$_$aa";
+            }
+        } @vs;
+    }
     foreach my $rel (keys %$relh) {
         if ($rel eq 'xref') {
-            print "xref: $_\n" foreach @{$relh->{$rel}};
+            print "xref: $_\n" foreach @vs;
         }
         elsif ($rel eq 'synonym') {
-            print "$rel: \"$_\" EXACT []\n" foreach @{$relh->{$rel}};
+            print "$rel: \"$_\" EXACT []\n" foreach @vs;
         }
         elsif ($rel eq 'is_a') {
-            print "is_a: $_\n" foreach @{$relh->{$rel}};
+            print "is_a: $_\n" foreach @vs;
         }
         elsif ($rel eq 'equivalent_to') {
-            print "equivalent_to: $_\n" foreach @{$relh->{$rel}};
+            print "equivalent_to: $_\n" foreach @vs;
         }
         elsif ($rel eq 'def_xref') {
             printf("def: \".\" [%s]\n",
-		   join(', ', @{$relh->{$rel}}));
+		   join(', ', @vs));
         }
         elsif ($rel =~ /pv:(\S+)/) {
-            printf("property_value: $1 \"$_\" xsd:string\n") foreach @{$relh->{$rel}};
+            printf("property_value: $1 \"$_\" xsd:string\n") foreach @vs;
         }
         else {
-            print "relationship: $rel $_\n" foreach @{$relh->{$rel}};
+            print "relationship: $rel $_\n" foreach @vs;
         }
     }
     print "\n";

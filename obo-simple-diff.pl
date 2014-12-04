@@ -3,6 +3,7 @@
 use strict;
 
 my $show_context;
+my %tag_h;
 while ($ARGV[0] =~ /^\-.+/) {
     my $opt = shift @ARGV;
     if ($opt eq '-h' || $opt eq '--help') {
@@ -11,6 +12,13 @@ while ($ARGV[0] =~ /^\-.+/) {
     }
     elsif ($opt eq '-c') {
         $show_context = 1;
+    }
+    elsif ($opt eq '-l') {
+        %tag_h = 
+            (
+             is_a => 1,
+             relationship => 1
+            );
     }
     else {
         die $opt;
@@ -121,6 +129,14 @@ sub pdoc {
                 }
                 else {
                     $nh{$id} = $n;
+                }
+            }
+
+            if (%tag_h) {
+                if (/^(\S+):\s*(.*)/) {
+                    if (!$tag_h{$1}) {
+                        next;
+                    }
                 }
             }
 
