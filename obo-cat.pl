@@ -3,13 +3,18 @@
 use strict;
 my $headerfile;
 my $noheader;
+my $include;
 while ($ARGV[0] =~ /^\-/) {
     my $opt = shift @ARGV;
     if ($opt eq '--headerfile') {
         $headerfile = shift @ARGV;
     }
-    if ($opt eq '--noheader') {
+    elsif ($opt eq '--noheader') {
         $noheader = 1;
+    }
+    elsif ($opt eq '-i' || $opt eq '--include') {
+        $noheader = 1;
+        $include = 1;
     }
 }
 
@@ -23,17 +28,22 @@ exit 0;
 
 sub catfile {
     my $f=shift;
-    my $include=shift;
+    print STDERR "F=$f INC=$include\n";
     my $ok = open(F,$f);
     if (!$ok)  {
         warn("no such file: $f\n");
         return;
     }
-    unless ($include) {
+    if (!$include) {
+        print STDERR "Skipping header INC=$include\n";
+
+        # skip header
         while (<F>) {
             last if /^\s*$/;
         }
     }
+    # never do this again
+    $include = 0;
     while (<F>) {
         print;
     }
