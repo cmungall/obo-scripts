@@ -6,6 +6,7 @@ my $regexp = '';
 my $noheader;
 my $negate;
 my $count;
+my $idfile;
 while ($ARGV[0] =~ /^\-.+/) {
     my $opt = shift @ARGV;
     if ($opt eq '-h' || $opt eq '--help') {
@@ -24,13 +25,24 @@ while ($ARGV[0] =~ /^\-.+/) {
             push(@or,$_);
         }
         close(F);
-        $regexp = sprintf('id: (%s)', join('|',@or));
+        $regexp = sprintf('id: (%s)\n', join('|',@or));
     }
     if ($opt eq '-c' || $opt eq '--count') {
         $count = 1;
     }
     if ($opt eq '--noheader') {
         $noheader = 1;
+    }
+    if ($opt eq '--idfile') {
+        my $idfile = shift;
+        open(F,$idfile) || die $idfile;
+        my @ids = ();
+        while(<F>) {
+            chomp;
+            push(@ids, $_);
+        }
+        close(F);
+        # DOH
     }
     if ($opt eq '-v' || $opt eq '--neg') {
         $negate = 1;

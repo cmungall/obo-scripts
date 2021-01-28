@@ -6,7 +6,9 @@ my $negate = 0;
 my $typedef = 1;
 my $show_header = 1;
 my $obsidfile;
+my $replfile;
 my @obsids = ();
+my $seeAlso;
 while ($ARGV[0] =~ /^\-/) {
     my $opt = shift @ARGV;
     if ($opt eq '-h' || $opt eq '--help') {
@@ -25,11 +27,17 @@ while ($ARGV[0] =~ /^\-/) {
     elsif ($opt eq '-i' || $opt eq '--idfile') {
         $obsidfile = shift @ARGV;
     }
+    elsif ($opt eq '-r' || $opt eq '--replacementfile') {
+        $replfile = shift @ARGV;
+    }
     elsif ($opt eq '-l' || $opt eq '--idlist') {
         @obsids = split(/,/,shift @ARGV);
     }
     elsif ($opt eq '-n' || $opt eq '--negate') {
         $negate = 1;
+    }
+    elsif ($opt eq '-s' || $opt eq '--seeAlso') {
+        $seeAlso = shift;
     }
     elsif ($opt eq '-t' || $opt eq '--tag') {
         $tag_h{shift @ARGV} = 1;
@@ -63,12 +71,50 @@ if ($obsidfile) {
     close(F);
 }
 
+my %rmap = ();
+if ($replfile) {
+    open(F,$replfile) || die $replfile;
+    while(<F>) {
+        chomp;
+        s/^\s+//;
+        s/\s+$//;
+        my ($id, $repl) = split(/ /);
+        push(@obsids, $id);
+        $rmap{$id} = $repl;
+        print STDERR "$id --> $repl\n";
+    }
+    close(F);
+}
+
 
 my $id;
 my $n;
 my $is_obs = 0;
-while(<>) {
+my @lines = <>;
+my %obsh = map {($_=>1)} @obsids;
+
+my %isah = ();
+foreach (@lines) {
+    if (m@^id:\s+(\S+)@) {
+        $id = $1;
+    }    
+    elsif (m@^is_a:\s+(\S+)@) {
+        $isah{$id}->{$1}++;
+    }    
+}
+foreach (@lines) {
     chomp;
+
+    # rewire isas
+    if (m@is_a: (\S+)(.*)@) {
+        my $is_a = $1;
+        my $rest = $2;
+        my @is_as = replace_isa($is_a);
+        if (@is_as != 1 || $is_as[0] ne $is_a) {
+            $_ = join("\n", (map {"is_a: $_ {source=\"$is_a-obsoleted\"}"} @is_as));
+        }
+    }
+    
     if (m@^id:\s+(\S+)@) {
         $id = $1;
         if (grep {$_ eq $id} @obsids) {
@@ -85,6 +131,13 @@ while(<>) {
         }
         if ($is_obs) {
             $_ = "name: obsolete $n\nis_obsolete: true";
+            if ($rmap{$id}) {
+                $_ .= "\nreplaced_by: $rmap{$id}";
+            }
+            if ($seeAlso) {
+                $_ .= "\nproperty_value: seeAlso $seeAlso xsd:anyURI";
+
+            }
         }
     }
     elsif (m@^(\S+):\s+(.*)@) {
@@ -98,7 +151,11 @@ while(<>) {
                 print STDERR "SKIPPING: $_\n";
                 next;
             }
-            if (m@xref:\s+(.*)@) {
+            # MONDO specific
+            if (m@xref:\s+(.*).*equivalentTo@) {
+                s@equivalentTo@obsoleteEquivalent@;
+            }
+            elsif (m@xref:\s+(.*)@) {
                 $_ = "consider: $1";
             }
         }
@@ -113,6 +170,17 @@ while(<>) {
 
 exit 0;
 
+sub replace_isa {
+    my $p = shift;
+    if ($obsh{$p}) {
+        my @parents = keys %{$isah{$p}};
+        return map {replace_isa($_)} @parents;
+    }
+    else {
+        return ($p);
+    }
+} 
+
 sub scriptname {
     my @p = split(/\//,$0);
     pop @p;
@@ -123,13 +191,14 @@ sub usage {
     my $sn = scriptname();
 
     <<EOM;
-$sn [-t tag]* [--no-header] FILE [FILE...]
+$sn [-l ID]* [--no-header] FILE [FILE...]
 
-strips all tags except selected
+obsoletes stanzas
 
 Example:
 
-$sn  -t id -t xref gene_ontology.obo
+$sn  -l ID1 -l ID2 foo.obo
+$sn  -i idfile.txt foo.obo
 
 EOM
 }

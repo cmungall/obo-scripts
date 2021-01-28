@@ -177,6 +177,7 @@ foreach (@maptblfs) {
         $doneh{"$id $x"}=1;
         push(@{$xrefh{$id}},$x);
         push(@{$invxrefh{$x}},$id);
+        #print STDERR "$x -> $id\n";
     }
     close(F);
 }
