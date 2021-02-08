@@ -22,6 +22,7 @@ my $id;
 my $name;
 while(<>) {
     chomp;
+    s@property_value: NCIT:P207 "(C\S+)"@xref: UMLS:$1@g;
     if (/^id:\s+(\S+)/) {
         $id = $1;
         $name = "";
@@ -68,6 +69,9 @@ while(<>) {
                 }
             }
         }
+        $x =~ s@^NCI:@NCIT:@;
+        $x =~ s@^UMLS_CUI:@UMLS:@;
+        
         my @row = (
             $id, $name,
             $pred,

@@ -1,0 +1,111 @@
+#!/usr/bin/perl
+
+use strict;
+my @ks;
+my %typeh = ();
+my $revfactor = 1;
+my $isnum = 0;
+my $thresh;
+my $threshk;
+my $top_n = undef;
+my $has_header = 0;
+while ($ARGV[0] =~ /^\-/) {
+      my $opt = shift;
+      if ($opt eq '-k') {
+          @ks = (getk(shift @ARGV));
+      }     
+      elsif ($opt eq '-r') {
+          $revfactor = -1;
+      }     
+      elsif ($opt =~ /^\-t(\d+)/) {
+          $threshk = $1;
+          $thresh = shift @ARGV;
+      }     
+      elsif ($opt eq '-n') {
+          $isnum = 1;
+      }     
+      elsif ($opt eq '-N') {
+          for my $k (getk(shift @ARGV)) {
+              $typeh{$k} = 'n';
+          }
+      }     
+      elsif ($opt eq '--top') {
+          $top_n = shift;
+      }     
+      elsif ($opt eq '-s' || $opt eq '--has-header') {
+          $has_header = 1;
+      }     
+      elsif ($opt =~ /\-k(\S+)/) {
+          @ks = map {getk($_)} split(',',$1);
+      }     
+}
+if ($isnum) {
+    $typeh{$_} = 'n' foreach @ks;
+}
+my @rows = ();
+while(<>) {
+    if ($has_header) {
+        $has_header = 0;
+        print;
+        next;
+    }
+    chomp;
+    my $row = [split(/\t/)];
+    if ($threshk) {
+        if ($row->[$threshk-1] < $thresh) {
+            next;
+        }
+    }
+    push(@rows,$row);
+}
+@rows = sort { mycmp () } @rows;
+
+if ($top_n) {
+    my $lastby;
+    my $c=0;
+    foreach my $row (@rows) {
+        my $by = $row->[$ks[0]];
+        if ($by ne $lastby) {
+            $c=0;
+        }
+        $lastby = $by;
+        $c++;
+        if ($c <= $top_n) {
+            print join("\t",@$row)."\n";
+        }
+    }
+}
+else {
+    print join("\t",@$_)."\n"
+        foreach @rows;
+}
+
+exit(0);
+
+sub mycmp {
+    my $cmp = 0;
+    my $i=0;
+    while (!$cmp && $i < scalar(@ks)) {
+        my $k = $ks[$i];
+        if ($typeh{$k} eq 'n') {
+            $cmp = $a->[$k] <=> $b->[$k];
+        }
+        else {
+            $cmp = $a->[$k] cmp $b->[$k];
+        }
+        $cmp *= $revfactor;
+        $i++;
+    }
+    return $cmp;
+}
+sub getk {
+    my $k = shift;
+    my $type = '';
+    if ($k =~ /^n(\d+)/) {
+        $k = $1;
+        $type = 'n';
+    }
+    $k--;
+    $typeh{$k} = $type;
+    return $k;
+}
