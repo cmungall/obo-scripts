@@ -16,13 +16,52 @@ my @hdr = qw(
     comment
     );
 
+my $DEFAULT;
+$DEFAULT = 'skos:closeMatch';
+
+while ($ARGV[0] =~ /^\-/) {
+    my $opt = shift @ARGV;
+    if ($opt eq '-h' || $opt eq '--help') {
+        print usage();
+        exit 0;
+    }
+    elsif ($opt eq '-p' || $opt eq '--predicate') {
+        $DEFAULT = shift @ARGV;
+    }
+    else {
+        die $opt;
+    }
+}
+
+my @lines = <>;
+
+my %idh = ();
+foreach (@lines) {
+    s@property_value: NCIT:P207 "(C\S+)"@xref: UMLS:$1@g;
+    s@^NCI:@NCIT:@;
+    s@^UMLS_CUI:@UMLS:@;
+
+    if (/^id:\s+(\S+)/) {
+        $idh{$1}++;
+    }
+    if (/^xref:\s+(\S+)/) {
+        $idh{$1}++;
+    }
+}
+my %dbh = ();
+foreach my $id (keys %idh) {
+    $id =~ m@(\S+):@;
+    $dbh{$1}++;
+}
+print "#curie_map:\n";
+print "#  $_: http://purl.obolibrary.org/obo/$_"."_\n" foreach keys %dbh;
+
 print join("\t", @hdr)."\n";
 
 my $id;
 my $name;
-while(<>) {
+foreach (@lines) {
     chomp;
-    s@property_value: NCIT:P207 "(C\S+)"@xref: UMLS:$1@g;
     if (/^id:\s+(\S+)/) {
         $id = $1;
         $name = "";
@@ -34,8 +73,8 @@ while(<>) {
         my $x = $1;
         my $xn = "";
         my $rest = $2;
-        my $pred = "skos:closeMatch";
-        my $match_type = "xref";
+        my $pred = $DEFAULT;
+        my $match_type = "Curated";
         my $comment = "";
         my $confidence = "0.5";
         if ($rest =~ m@ \! (.*)@) {
