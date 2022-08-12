@@ -81,6 +81,12 @@ foreach my $id (keys %linkh) {
         if ($rel eq 'xref') {
             print "xref: $_\n" foreach @vs;
         }
+        elsif ($rel eq 'range') {
+            print "range: $_\n" foreach @vs;
+        }
+        elsif ($rel eq 'def') {
+            print "def: \"$_\" []\n" foreach @vs;
+        }
         elsif ($rel eq 'synonym') {
             print "$rel: \"$_\" EXACT []\n" foreach @vs;
         }

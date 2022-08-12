@@ -42,7 +42,7 @@ while ($ARGV[0] =~ /^\-.+/) {
             push(@ids, $_);
         }
         close(F);
-        # DOH
+        $regexp = "id: (" .  join("|", @ids) . ")\n";
     }
     if ($opt eq '-v' || $opt eq '--neg') {
         $negate = 1;

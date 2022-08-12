@@ -22,6 +22,7 @@ while(<>) {
     }
     my (@vals) = split(/\t/,$_);
     @vals = map {s@\|@, @g; $_} @vals;
+    @vals = map {s@^\>@`>`@g; $_} @vals;
     if (!$hlen) {
         $hlen = scalar(@vals);
     }
