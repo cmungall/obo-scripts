@@ -1,0 +1,113 @@
+#!/usr/bin/perl
+
+my $PAD = 20;
+my $numbers = 0;
+my $re;
+my $x;
+my $quote;
+my $cmt;
+if (scalar(@ARGV) && $ARGV[0] =~ /^\-/) {
+    my $opt = shift @ARGV;
+    if ($opt eq '--hdr') {
+        $hdr = join("\t",split(/,/,shift @ARGV));
+    }
+    elsif ($opt eq '--hdrfile') {
+        my $fn = shift @ARGV;
+        open(F,$fn) || die $fn;
+        $hdr = <F>;
+        close(F);
+    }
+    elsif ($opt eq '-a' || $opt eq '--autohdr') {
+        $hdr = join("\t", (1 .. shift @ARGV));
+    }
+    elsif ($opt eq '--pad') {
+        $PAD = shift @ARGV;
+    }
+    elsif ($opt eq '-r') {
+        $re = shift @ARGV;
+    }
+    elsif ($opt eq '-x') {
+        $x = shift @ARGV;
+    }
+    elsif ($opt eq '--quote') {
+        $quote = 1;
+    }
+    elsif ($opt eq '--comment' or $opt eq '-c') {
+        $cmt = shift @ARGV;
+    }
+    elsif ($opt eq '--hash-comment' or $opt eq '-H') {
+        $cmt = '#';
+    }
+    elsif ($opt eq '-n') {
+        $numbers = 1;
+    }
+    else {
+	die $opt;
+    }
+}
+
+while (!$hdr) {
+    $hdr = <>;
+    if ($cmt && index($hdr, $cmt) == 0) {
+        $hdr = undef;
+    }
+}
+chomp $hdr;
+$hdr =~ s/\r//g;
+
+@hdrs = split(/\t/,$hdr);
+
+my @lines = ();
+if ($x) {
+    my $tmpf = "/tmp/tbl2x-$$.tsv";
+    open(F,">$tmpf") || die $tmpf;
+    while(<>) {
+        if ($cmt && index($_, $cmt) == 0) {
+            continue;
+        }
+        print F $_;
+    }
+    close(F);
+    open(F, "cat $tmpf | $x|") || die;
+    @lines = <F>;
+    close(F);
+    unlink($tmpf);
+}
+else {
+    @lines = <>;
+}
+
+$line = 0;
+while ($_ = shift @lines) {
+    if ($cmt && index($_, $cmt) == 0) {
+        next;
+    }
+    
+    $line++;
+    if ($re) {
+        if ($_ !~ /$re/) {
+            next;
+        }
+    }
+    print "RECORD: $line\n";
+    chomp;
+    s/\r//g;
+    @vals = split(/\t/,$_);
+    for ($i=0;$i<@hdrs;$i++) {
+        if ($numbers) {
+            printf "%2d ",$i+1;
+        }
+        my $fmt = "%".$PAD."s";
+        $col = $hdrs[$i];
+        if (length($col) > $PAD) {
+            $col = substr($col, 0, $PAD);
+        }
+        $v = $vals[$i];
+        if ($quote) {
+            $v = '"' . $v . '"';
+        }
+        printf "$fmt: %s\n", $col, $v;
+    }
+    print "\n";
+    print "\n";
+}
