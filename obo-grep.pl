@@ -39,6 +39,7 @@ while ($ARGV[0] =~ /^\-.+/) {
         my @ids = ();
         while(<F>) {
             chomp;
+            s@\s.*@@;
             push(@ids, $_);
         }
         close(F);
