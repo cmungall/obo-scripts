@@ -3,6 +3,7 @@
 my $n=0;
 my $len;
 my $hlen;
+my $List_delim;
 while ($ARGV[0] =~ m@^-@) {
     my $opt = shift @ARGV;
     if ($opt eq '--header'){
@@ -14,14 +15,23 @@ while ($ARGV[0] =~ m@^-@) {
         print '|'.join('|',@vals)."|\n";
         
     }
+    elsif ($opt eq '--list-delimiter' || $opt eq '-D') {
+        $list_delim = shift @ARGV;
+    }
 }
 while(<>) {
+    s/\r?\n\z//;
     chomp;
     if ($n==0 && m@^\#@) {
         s@^\#@@;
     }
     my (@vals) = split(/\t/,$_);
-    @vals = map {s@\|@, @g; $_} @vals;
+    if ($list_delim) {
+        @vals = map {s@\|@$list_delim@gx; $_} @vals;
+    }
+    else {
+        @vals = map {s@\|@, @g; $_} @vals;
+    }
     @vals = map {s@^\>@`>`@g; $_} @vals;
     if (!$hlen) {
         $hlen = scalar(@vals);

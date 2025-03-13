@@ -99,7 +99,7 @@ pre-processing before passing to memory intensive applications
 
 Example:
 
-$sn -c 1000 chebi.obo 
+$sn -s 1000 chebi.obo 
 
 --breaks chebi into files of size 1000
 

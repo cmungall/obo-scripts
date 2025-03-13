@@ -8,6 +8,7 @@ my $negate;
 my $count;
 my $rmc;
 my $keep_dupes;
+my $keep_other;
 
 while ($ARGV[0] =~ /^\-.+/) {
     my $opt = shift @ARGV;
@@ -26,6 +27,9 @@ while ($ARGV[0] =~ /^\-.+/) {
     }
     elsif ($opt eq '--remove-comments') {
         $rmc = 1;
+    }
+    elsif ($opt eq '--keep-other') {
+        $keep_other = 1;
     }
 }
 
@@ -64,6 +68,10 @@ while (@ARGV) {
                     else {
                         if (compr($th{$id}) eq compr($_)) {
                             print STDERR "NEAR-IDENTICAL: $id\n";
+                        }
+                        elsif ($keep_other) {
+                            print STDERR "========================================\nDITCHING:\n\n$th{$id}  <<< >>>>\n\nUSING:\n\n$_";
+                            $th{$id} = $_;
                         }
                         else {
                             print STDERR "========================================\nDITCHING:\n\n$_  <<< >>>>\n\nUSING:\n\n$th{$id}";
