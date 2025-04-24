@@ -52,11 +52,22 @@ foreach my $id (@ids) {
 open(W, ">$fn.tmp") || die "cannot write tp $fn.tmp";
 
 my %stanza_map = ();
+my %stanza_type_map = (); # To track stanza type (Term or Typedef)
 $/ = "\n\n";
 open(F, $fn) || die "cannot open $fn";
 while(<F>) {
     if ($_ =~ /id: (\S+)/) {
-        $stanza_map{$1} = $_;
+        my $id = $1;
+        $stanza_map{$id} = $_;
+        
+        # Determine stanza type
+        if ($_ =~ /\[(\w+)\]/) {
+            $stanza_type_map{$id} = $1;
+        }
+        else {
+            # Default to Term if type not specified
+            $stanza_type_map{$id} = "Term";
+        }
     }
     else {
         print W $_;
@@ -67,11 +78,25 @@ close(F);
 # combine old and new stanzas
 foreach my $id (sort keys %new_stanza_map) {
     $stanza_map{$id} = $new_stanza_map{$id};
+    
+    # Update stanza type for new stanzas
+    if ($new_stanza_map{$id} =~ /\[(\w+)\]/) {
+        $stanza_type_map{$id} = $1;
+    }
+    else {
+        # Default to Term if type not specified
+        $stanza_type_map{$id} = "Term";
+    }
 }
 
-my @sorted_ids;
-@sorted_ids = sort keys %stanza_map;
-
+# Sort ids by stanza type (Term first, then Typedef) and then alphabetically within each type
+my @sorted_ids = sort {
+    # First compare stanza types (Term comes before Typedef)
+    my $type_compare = ($stanza_type_map{$a} eq "Typedef") <=> ($stanza_type_map{$b} eq "Typedef");
+    
+    # If same type, sort alphabetically by ID
+    return $type_compare || $a cmp $b;
+} keys %stanza_map;
 
 foreach my $id (@sorted_ids) {
     print W $stanza_map{$id};
