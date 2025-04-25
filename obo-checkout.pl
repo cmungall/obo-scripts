@@ -32,7 +32,6 @@ while(<F>) {
         if ($id) {
             # check if id is in %idmap
             if ($idmap{$id}) {
-                print "Checking out $id\n";
                 w($id, $stanza);
             }
         }
@@ -60,6 +59,7 @@ sub get_path {
 sub w {
     my ($id, $stanza) = @_;
     my $path = get_path($id);
+    print "Checking out $id to $path\n";
     open(W, ">$path") || die($path);
     print W $stanza;
     close(W)
@@ -75,14 +75,19 @@ sub usage {
     my $sn = scriptname();
 
     <<EOM;
-$sn [-s chunksize] [-x COMMAND \;] OBO-FILES
+$sn  OBO-FILE [ -d TERM-DIR ] TERM1 TERM2 ...
 
-Checks out IDs from a complete obo file to stanza-specific files
-and a terms directory.
+Checks out obo files into TERM-DIR from the OBO-FILE
 
 Example:
 
-$sn -d terms go-edit.obo GO:0000001
+$sn src/ontology/foo-edit.obo FOO:0000087 FOO:0000081
+
+This will extract the FOO:0000087 and FOO:0000081 terms from the foo-edit.obo file
+and write them to the terms directory, as files:
+
+terms/FOO_0000087.obo
+terms/FOO_0000081.obo
 
 EOM
 }
